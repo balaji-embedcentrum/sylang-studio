@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TerminalRouteImport } from './routes/terminal'
 import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -58,6 +59,10 @@ import { Route as ApiWorkspacesOpenRouteImport } from './routes/api/workspaces/o
 import { Route as ApiWorkspacesListRouteImport } from './routes/api/workspaces/list'
 import { Route as ApiWorkspacesCreateRouteImport } from './routes/api/workspaces/create'
 import { Route as ApiWorkspacesCloneRouteImport } from './routes/api/workspaces/clone'
+import { Route as ApiSylangVariantMatrixRouteImport } from './routes/api/sylang/variant-matrix'
+import { Route as ApiSylangSymbolsRouteImport } from './routes/api/sylang/symbols'
+import { Route as ApiSylangSymbolDetailsRouteImport } from './routes/api/sylang/symbol-details'
+import { Route as ApiSylangDiagramRouteImport } from './routes/api/sylang/diagram'
 import { Route as ApiSkillsUninstallRouteImport } from './routes/api/skills/uninstall'
 import { Route as ApiSkillsInstallRouteImport } from './routes/api/skills/install'
 import { Route as ApiSkillsHubSearchRouteImport } from './routes/api/skills/hub-search'
@@ -86,6 +91,7 @@ import { Route as ApiGithubReposRouteImport } from './routes/api/github/repos'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
 import { Route as ApiAuthGithubRouteImport } from './routes/api/auth/github'
 import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
+import { Route as ApiAgentsTestRouteImport } from './routes/api/agents/test'
 import { Route as ApiAgentsSelectRouteImport } from './routes/api/agents/select'
 import { Route as ApiAgentsListRouteImport } from './routes/api/agents/list'
 import { Route as ApiAgentsAddRouteImport } from './routes/api/agents/add'
@@ -96,6 +102,11 @@ import { Route as ApiAgentSessionsEndRouteImport } from './routes/api/agent-sess
 import { Route as ApiSessionsSessionKeyStatusRouteImport } from './routes/api/sessions/$sessionKey.status'
 import { Route as ApiSessionsSessionKeyActiveRunRouteImport } from './routes/api/sessions/$sessionKey.active-run'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TerminalRoute = TerminalRouteImport.update({
   id: '/terminal',
   path: '/terminal',
@@ -341,6 +352,26 @@ const ApiWorkspacesCloneRoute = ApiWorkspacesCloneRouteImport.update({
   path: '/api/workspaces/clone',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSylangVariantMatrixRoute = ApiSylangVariantMatrixRouteImport.update({
+  id: '/api/sylang/variant-matrix',
+  path: '/api/sylang/variant-matrix',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSylangSymbolsRoute = ApiSylangSymbolsRouteImport.update({
+  id: '/api/sylang/symbols',
+  path: '/api/sylang/symbols',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSylangSymbolDetailsRoute = ApiSylangSymbolDetailsRouteImport.update({
+  id: '/api/sylang/symbol-details',
+  path: '/api/sylang/symbol-details',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSylangDiagramRoute = ApiSylangDiagramRouteImport.update({
+  id: '/api/sylang/diagram',
+  path: '/api/sylang/diagram',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSkillsUninstallRoute = ApiSkillsUninstallRouteImport.update({
   id: '/uninstall',
   path: '/uninstall',
@@ -481,6 +512,11 @@ const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
   path: '/callback',
   getParentRoute: () => ApiAuthRoute,
 } as any)
+const ApiAgentsTestRoute = ApiAgentsTestRouteImport.update({
+  id: '/api/agents/test',
+  path: '/api/agents/test',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAgentsSelectRoute = ApiAgentsSelectRouteImport.update({
   id: '/api/agents/select',
   path: '/api/agents/select',
@@ -543,6 +579,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRouteWithChildren
   '/skills': typeof SkillsRoute
   '/terminal': typeof TerminalRoute
+  '/terms': typeof TermsRoute
   '/api/auth': typeof ApiAuthRouteWithChildren
   '/api/auth-check': typeof ApiAuthCheckRoute
   '/api/chat-events': typeof ApiChatEventsRoute
@@ -583,6 +620,7 @@ export interface FileRoutesByFullPath {
   '/api/agents/add': typeof ApiAgentsAddRoute
   '/api/agents/list': typeof ApiAgentsListRoute
   '/api/agents/select': typeof ApiAgentsSelectRoute
+  '/api/agents/test': typeof ApiAgentsTestRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/github': typeof ApiAuthGithubRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
@@ -611,6 +649,10 @@ export interface FileRoutesByFullPath {
   '/api/skills/hub-search': typeof ApiSkillsHubSearchRoute
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
+  '/api/sylang/diagram': typeof ApiSylangDiagramRoute
+  '/api/sylang/symbol-details': typeof ApiSylangSymbolDetailsRoute
+  '/api/sylang/symbols': typeof ApiSylangSymbolsRoute
+  '/api/sylang/variant-matrix': typeof ApiSylangVariantMatrixRoute
   '/api/workspaces/clone': typeof ApiWorkspacesCloneRoute
   '/api/workspaces/create': typeof ApiWorkspacesCreateRoute
   '/api/workspaces/list': typeof ApiWorkspacesListRoute
@@ -630,6 +672,7 @@ export interface FileRoutesByTo {
   '/projects': typeof ProjectsRoute
   '/skills': typeof SkillsRoute
   '/terminal': typeof TerminalRoute
+  '/terms': typeof TermsRoute
   '/api/auth': typeof ApiAuthRouteWithChildren
   '/api/auth-check': typeof ApiAuthCheckRoute
   '/api/chat-events': typeof ApiChatEventsRoute
@@ -670,6 +713,7 @@ export interface FileRoutesByTo {
   '/api/agents/add': typeof ApiAgentsAddRoute
   '/api/agents/list': typeof ApiAgentsListRoute
   '/api/agents/select': typeof ApiAgentsSelectRoute
+  '/api/agents/test': typeof ApiAgentsTestRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/github': typeof ApiAuthGithubRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
@@ -698,6 +742,10 @@ export interface FileRoutesByTo {
   '/api/skills/hub-search': typeof ApiSkillsHubSearchRoute
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
+  '/api/sylang/diagram': typeof ApiSylangDiagramRoute
+  '/api/sylang/symbol-details': typeof ApiSylangSymbolDetailsRoute
+  '/api/sylang/symbols': typeof ApiSylangSymbolsRoute
+  '/api/sylang/variant-matrix': typeof ApiSylangVariantMatrixRoute
   '/api/workspaces/clone': typeof ApiWorkspacesCloneRoute
   '/api/workspaces/create': typeof ApiWorkspacesCreateRoute
   '/api/workspaces/list': typeof ApiWorkspacesListRoute
@@ -719,6 +767,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRouteWithChildren
   '/skills': typeof SkillsRoute
   '/terminal': typeof TerminalRoute
+  '/terms': typeof TermsRoute
   '/api/auth': typeof ApiAuthRouteWithChildren
   '/api/auth-check': typeof ApiAuthCheckRoute
   '/api/chat-events': typeof ApiChatEventsRoute
@@ -759,6 +808,7 @@ export interface FileRoutesById {
   '/api/agents/add': typeof ApiAgentsAddRoute
   '/api/agents/list': typeof ApiAgentsListRoute
   '/api/agents/select': typeof ApiAgentsSelectRoute
+  '/api/agents/test': typeof ApiAgentsTestRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/github': typeof ApiAuthGithubRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
@@ -787,6 +837,10 @@ export interface FileRoutesById {
   '/api/skills/hub-search': typeof ApiSkillsHubSearchRoute
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
+  '/api/sylang/diagram': typeof ApiSylangDiagramRoute
+  '/api/sylang/symbol-details': typeof ApiSylangSymbolDetailsRoute
+  '/api/sylang/symbols': typeof ApiSylangSymbolsRoute
+  '/api/sylang/variant-matrix': typeof ApiSylangVariantMatrixRoute
   '/api/workspaces/clone': typeof ApiWorkspacesCloneRoute
   '/api/workspaces/create': typeof ApiWorkspacesCreateRoute
   '/api/workspaces/list': typeof ApiWorkspacesListRoute
@@ -809,6 +863,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/skills'
     | '/terminal'
+    | '/terms'
     | '/api/auth'
     | '/api/auth-check'
     | '/api/chat-events'
@@ -849,6 +904,7 @@ export interface FileRouteTypes {
     | '/api/agents/add'
     | '/api/agents/list'
     | '/api/agents/select'
+    | '/api/agents/test'
     | '/api/auth/callback'
     | '/api/auth/github'
     | '/api/auth/logout'
@@ -877,6 +933,10 @@ export interface FileRouteTypes {
     | '/api/skills/hub-search'
     | '/api/skills/install'
     | '/api/skills/uninstall'
+    | '/api/sylang/diagram'
+    | '/api/sylang/symbol-details'
+    | '/api/sylang/symbols'
+    | '/api/sylang/variant-matrix'
     | '/api/workspaces/clone'
     | '/api/workspaces/create'
     | '/api/workspaces/list'
@@ -896,6 +956,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/skills'
     | '/terminal'
+    | '/terms'
     | '/api/auth'
     | '/api/auth-check'
     | '/api/chat-events'
@@ -936,6 +997,7 @@ export interface FileRouteTypes {
     | '/api/agents/add'
     | '/api/agents/list'
     | '/api/agents/select'
+    | '/api/agents/test'
     | '/api/auth/callback'
     | '/api/auth/github'
     | '/api/auth/logout'
@@ -964,6 +1026,10 @@ export interface FileRouteTypes {
     | '/api/skills/hub-search'
     | '/api/skills/install'
     | '/api/skills/uninstall'
+    | '/api/sylang/diagram'
+    | '/api/sylang/symbol-details'
+    | '/api/sylang/symbols'
+    | '/api/sylang/variant-matrix'
     | '/api/workspaces/clone'
     | '/api/workspaces/create'
     | '/api/workspaces/list'
@@ -984,6 +1050,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/skills'
     | '/terminal'
+    | '/terms'
     | '/api/auth'
     | '/api/auth-check'
     | '/api/chat-events'
@@ -1024,6 +1091,7 @@ export interface FileRouteTypes {
     | '/api/agents/add'
     | '/api/agents/list'
     | '/api/agents/select'
+    | '/api/agents/test'
     | '/api/auth/callback'
     | '/api/auth/github'
     | '/api/auth/logout'
@@ -1052,6 +1120,10 @@ export interface FileRouteTypes {
     | '/api/skills/hub-search'
     | '/api/skills/install'
     | '/api/skills/uninstall'
+    | '/api/sylang/diagram'
+    | '/api/sylang/symbol-details'
+    | '/api/sylang/symbols'
+    | '/api/sylang/variant-matrix'
     | '/api/workspaces/clone'
     | '/api/workspaces/create'
     | '/api/workspaces/list'
@@ -1073,6 +1145,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRouteWithChildren
   SkillsRoute: typeof SkillsRoute
   TerminalRoute: typeof TerminalRoute
+  TermsRoute: typeof TermsRoute
   ApiAuthRoute: typeof ApiAuthRouteWithChildren
   ApiAuthCheckRoute: typeof ApiAuthCheckRoute
   ApiChatEventsRoute: typeof ApiChatEventsRoute
@@ -1110,6 +1183,7 @@ export interface RootRouteChildren {
   ApiAgentsAddRoute: typeof ApiAgentsAddRoute
   ApiAgentsListRoute: typeof ApiAgentsListRoute
   ApiAgentsSelectRoute: typeof ApiAgentsSelectRoute
+  ApiAgentsTestRoute: typeof ApiAgentsTestRoute
   ApiGithubReposRoute: typeof ApiGithubReposRoute
   ApiHermesProxySplatRoute: typeof ApiHermesProxySplatRoute
   ApiKnowledgeGraphRoute: typeof ApiKnowledgeGraphRoute
@@ -1126,6 +1200,10 @@ export interface RootRouteChildren {
   ApiProfilesListRoute: typeof ApiProfilesListRoute
   ApiProfilesReadRoute: typeof ApiProfilesReadRoute
   ApiProfilesRenameRoute: typeof ApiProfilesRenameRoute
+  ApiSylangDiagramRoute: typeof ApiSylangDiagramRoute
+  ApiSylangSymbolDetailsRoute: typeof ApiSylangSymbolDetailsRoute
+  ApiSylangSymbolsRoute: typeof ApiSylangSymbolsRoute
+  ApiSylangVariantMatrixRoute: typeof ApiSylangVariantMatrixRoute
   ApiWorkspacesCloneRoute: typeof ApiWorkspacesCloneRoute
   ApiWorkspacesCreateRoute: typeof ApiWorkspacesCreateRoute
   ApiWorkspacesListRoute: typeof ApiWorkspacesListRoute
@@ -1134,6 +1212,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terminal': {
       id: '/terminal'
       path: '/terminal'
@@ -1477,6 +1562,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWorkspacesCloneRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/sylang/variant-matrix': {
+      id: '/api/sylang/variant-matrix'
+      path: '/api/sylang/variant-matrix'
+      fullPath: '/api/sylang/variant-matrix'
+      preLoaderRoute: typeof ApiSylangVariantMatrixRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sylang/symbols': {
+      id: '/api/sylang/symbols'
+      path: '/api/sylang/symbols'
+      fullPath: '/api/sylang/symbols'
+      preLoaderRoute: typeof ApiSylangSymbolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sylang/symbol-details': {
+      id: '/api/sylang/symbol-details'
+      path: '/api/sylang/symbol-details'
+      fullPath: '/api/sylang/symbol-details'
+      preLoaderRoute: typeof ApiSylangSymbolDetailsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sylang/diagram': {
+      id: '/api/sylang/diagram'
+      path: '/api/sylang/diagram'
+      fullPath: '/api/sylang/diagram'
+      preLoaderRoute: typeof ApiSylangDiagramRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/skills/uninstall': {
       id: '/api/skills/uninstall'
       path: '/uninstall'
@@ -1673,6 +1786,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthCallbackRouteImport
       parentRoute: typeof ApiAuthRoute
     }
+    '/api/agents/test': {
+      id: '/api/agents/test'
+      path: '/api/agents/test'
+      fullPath: '/api/agents/test'
+      preLoaderRoute: typeof ApiAgentsTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/agents/select': {
       id: '/api/agents/select'
       path: '/api/agents/select'
@@ -1845,6 +1965,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRouteWithChildren,
   SkillsRoute: SkillsRoute,
   TerminalRoute: TerminalRoute,
+  TermsRoute: TermsRoute,
   ApiAuthRoute: ApiAuthRouteWithChildren,
   ApiAuthCheckRoute: ApiAuthCheckRoute,
   ApiChatEventsRoute: ApiChatEventsRoute,
@@ -1882,6 +2003,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentsAddRoute: ApiAgentsAddRoute,
   ApiAgentsListRoute: ApiAgentsListRoute,
   ApiAgentsSelectRoute: ApiAgentsSelectRoute,
+  ApiAgentsTestRoute: ApiAgentsTestRoute,
   ApiGithubReposRoute: ApiGithubReposRoute,
   ApiHermesProxySplatRoute: ApiHermesProxySplatRoute,
   ApiKnowledgeGraphRoute: ApiKnowledgeGraphRoute,
@@ -1898,6 +2020,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiProfilesListRoute: ApiProfilesListRoute,
   ApiProfilesReadRoute: ApiProfilesReadRoute,
   ApiProfilesRenameRoute: ApiProfilesRenameRoute,
+  ApiSylangDiagramRoute: ApiSylangDiagramRoute,
+  ApiSylangSymbolDetailsRoute: ApiSylangSymbolDetailsRoute,
+  ApiSylangSymbolsRoute: ApiSylangSymbolsRoute,
+  ApiSylangVariantMatrixRoute: ApiSylangVariantMatrixRoute,
   ApiWorkspacesCloneRoute: ApiWorkspacesCloneRoute,
   ApiWorkspacesCreateRoute: ApiWorkspacesCreateRoute,
   ApiWorkspacesListRoute: ApiWorkspacesListRoute,

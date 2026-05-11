@@ -5,6 +5,10 @@ import { usePageTitle } from '@/hooks/use-page-title'
 import { FileExplorerSidebar, type FileEntry } from '@/components/file-explorer'
 import { resolveTheme, useSettings } from '@/hooks/use-settings'
 import { JotxFileEditor } from '@/components/jotx-editor/JotxFileEditor'
+import {
+  SylangFileEditor,
+  isSylangFile,
+} from '@/components/sylang-editor/SylangFileEditor'
 import { useWorkspaceStore } from '@/stores/workspace-store'
 import { SessionTimer } from '@/components/session-timer'
 import { GitDiffView, type GitDiffSelection } from '@/components/git-panel'
@@ -76,6 +80,8 @@ type SelectedFile = {
   path: string
   name: string
   ext: string
+  /** When opened via click-to-id, the symbol the editor should scroll to + highlight. */
+  focusSymbolId?: string
 }
 
 function FilesRoute() {
@@ -129,7 +135,10 @@ function FilesRoute() {
     setSelectedDiff(null)
     setSelectedFile({ path: entry.path, name: entry.name, ext })
     setSavedOk(false)
-    if (!isJotxFile(entry.name)) {
+    // Jotx and Sylang editors do their own file I/O; CodeMirror branch
+    // is the only one that needs the host to pre-load the content into
+    // editorValue.
+    if (!isJotxFile(entry.name) && !isSylangFile(entry.name)) {
       try {
         const res = await fetch(`/api/files?action=read&path=${encodeURIComponent(entry.path)}`)
         if (res.ok) {
@@ -215,6 +224,20 @@ function FilesRoute() {
           initialPath={initialPath || ''}
         />
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          {/* Persistent session-timer bar — always at the top of the
+              editor area regardless of which editor renders below
+              (Sylang iframe, Jotx, CodeMirror, GitDiffView, or the
+              WorkspaceHome view). Renders null in local agent mode. */}
+          <div
+            className="flex items-center gap-3 px-4 py-1 border-b shrink-0"
+            style={{ background: 'var(--theme-sidebar)', borderColor: 'var(--theme-border)' }}
+          >
+            <span className="text-[11px] font-semibold tracking-tight" style={{ color: 'var(--theme-accent)' }}>
+              Hermes Studio
+            </span>
+            <div className="flex-1" />
+            <SessionTimer />
+          </div>
           {selectedDiff ? (
             <GitDiffView
               selection={selectedDiff}
@@ -224,6 +247,19 @@ function FilesRoute() {
             <JotxFileEditor
               filePath={selectedFile.path}
               fileName={selectedFile.name}
+            />
+          ) : selectedFile && isSylangFile(selectedFile.name) ? (
+            <SylangFileEditor
+              filePath={selectedFile.path}
+              fileName={selectedFile.name}
+              focusSymbolId={selectedFile.focusSymbolId}
+              onNavigate={(path, symbolId) => {
+                const name = path.split('/').pop() ?? path
+                const ext = name.includes('.')
+                  ? name.slice(name.lastIndexOf('.'))
+                  : ''
+                setSelectedFile({ path, name, ext, focusSymbolId: symbolId })
+              }}
             />
           ) : selectedFile ? (
             <>
@@ -260,14 +296,8 @@ function FilesRoute() {
                         : '·'}
                 </span>
                 <div className="flex-1" />
-                {/*
-                  SessionTimer in the file-open header. Without this, the
-                  timer disappears the moment a file is selected (it only
-                  rendered in the empty / WorkspaceHome branch below),
-                  hiding both the agent name and how-much-time-left from
-                  the user while they're actually working in a session.
-                */}
-                <SessionTimer />
+                {/* SessionTimer lives in the persistent top bar above —
+                    no need to duplicate it inside the file-open header. */}
                 <button
                   type="button"
                   onClick={handleSave}
@@ -292,19 +322,9 @@ function FilesRoute() {
               </div>
             </>
           ) : (
-            <>
-              <div
-                className="flex items-center gap-3 px-4 py-1.5 border-b shrink-0"
-                style={{ background: 'var(--theme-sidebar)', borderColor: 'var(--theme-border)' }}
-              >
-                <span className="text-sm font-semibold tracking-tight" style={{ color: 'var(--theme-accent)' }}>
-                  Hermes Studio
-                </span>
-                <div className="flex-1" />
-                <SessionTimer />
-              </div>
-              <WorkspaceHome workspacePath={initialPath} />
-            </>
+            /* Brand + SessionTimer live in the persistent top bar above —
+               no per-branch header needed for the WorkspaceHome view. */
+            <WorkspaceHome workspacePath={initialPath} />
           )}
         </main>
       </div>
