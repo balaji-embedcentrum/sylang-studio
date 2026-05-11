@@ -151,6 +151,21 @@ function FilesRoute() {
           initialPath={initialPath || ''}
         />
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          {/* Persistent session-timer bar — always at the top of the
+              editor area regardless of which editor renders below. The
+              file-specific headers (Sylang iframe breadcrumb, Jotx local
+              header, CodeMirror filename strip) sit underneath. Renders
+              null in local agent mode. */}
+          <div
+            className="flex items-center gap-3 px-4 py-1 border-b shrink-0"
+            style={{ background: 'var(--theme-sidebar)', borderColor: 'var(--theme-border)' }}
+          >
+            <span className="text-[11px] font-semibold tracking-tight" style={{ color: 'var(--theme-accent)' }}>
+              Hermes Studio
+            </span>
+            <div className="flex-1" />
+            <SessionTimer />
+          </div>
           {selectedFile && isJotxFile(selectedFile.name) ? (
             <JotxFileEditor
               filePath={selectedFile.path}
@@ -191,19 +206,9 @@ function FilesRoute() {
               </div>
             </>
           ) : (
-            <>
-              <div
-                className="flex items-center gap-3 px-4 py-1.5 border-b shrink-0"
-                style={{ background: 'var(--theme-sidebar)', borderColor: 'var(--theme-border)' }}
-              >
-                <span className="text-sm font-semibold tracking-tight" style={{ color: 'var(--theme-accent)' }}>
-                  Hermes Studio
-                </span>
-                <div className="flex-1" />
-                <SessionTimer />
-              </div>
-              <WorkspaceHome workspacePath={initialPath} />
-            </>
+            /* Brand + SessionTimer live in the persistent top bar above —
+               no per-branch header needed for the WorkspaceHome view. */
+            <WorkspaceHome workspacePath={initialPath} />
           )}
         </main>
       </div>
