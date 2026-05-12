@@ -46,6 +46,8 @@
     "@sylang-core/react": "link:../sylang-core/packages/react",
     "@sylang-core/registry": "link:../sylang-core/packages/registry",
     "@sylang-core/spec-dash": "link:../sylang-core/packages/spec-dash",
+    "@sylang-core/traceability": "link:../sylang-core/packages/traceability",
+    "@sylang-core/web-diagrams": "link:../sylang-core/packages/web-diagrams",
     "@sylang-core/tiptap": "link:../sylang-core/packages/tiptap",
     "@sylang-core/variant-matrix": "link:../sylang-core/packages/variant-matrix",
     "@sylang-core/web-editor": "link:../sylang-core/packages/web-editor",

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
 import { CodeMirrorEditor } from '@/components/code-editor/CodeMirrorEditor'
 import { createFileRoute } from '@tanstack/react-router'
 import { usePageTitle } from '@/hooks/use-page-title'
@@ -105,6 +105,13 @@ function FilesRoute() {
   const [editorValue, setEditorValue] = useState(INITIAL_EDITOR_VALUE)
   const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null)
   const [selectedDiff, setSelectedDiff] = useState<GitDiffSelection | null>(null)
+  // Inline view active on the home page (when no file is selected). Clicking
+  // a Quick Action card on WorkspaceHome sets this to 'coverage' /
+  // 'traceability' / 'fmea' / etc. and InlineViewHome renders the workbench
+  // in place of the home cards. Selecting a file from the sidebar
+  // implicitly returns to the per-file editor (the conditional below sees
+  // selectedFile first).
+  const [homeActiveView, setHomeActiveView] = useState<string | null>(null)
   // Save-state tracking. ``loadedContent`` is what we last read from disk
   // for ``loadedPath``; comparing against ``editorValue`` gives us "dirty"
   // without needing a separate dirty flag the user has to remember to set.
@@ -249,9 +256,21 @@ function FilesRoute() {
             className="flex items-center gap-3 px-4 py-1 border-b shrink-0"
             style={{ background: 'var(--theme-sidebar)', borderColor: 'var(--theme-border)' }}
           >
-            <span className="text-[11px] font-semibold tracking-tight" style={{ color: 'var(--theme-accent)' }}>
+            {/* Click "Hermes Studio" to drop both the selected file and
+                any active inline view — returns the user to
+                WorkspaceHome from anywhere in the editor pane. */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedFile(null)
+                setHomeActiveView(null)
+              }}
+              className="text-[11px] font-semibold tracking-tight bg-transparent border-0 p-0 hover:underline cursor-pointer"
+              style={{ color: 'var(--theme-accent)' }}
+              title="Back to workspace home"
+            >
               Hermes Studio
-            </span>
+            </button>
             <div className="flex-1" />
             <SessionTimer />
           </div>
@@ -365,10 +384,26 @@ function FilesRoute() {
                 />
               </div>
             </>
+          ) : homeActiveView ? (
+            /* Home-page Quick Action active — render the inline workbench
+               in place of the cards with a "Back to Home" affordance. */
+            <InlineViewHome
+              view={homeActiveView}
+              workspace={initialPath}
+              onClose={() => setHomeActiveView(null)}
+              onNavigate={(path, symbolId) => {
+                // Coverage / traceability identifier click → open the file
+                // in the regular editor flow. Clear the home view so the
+                // per-file editor takes over.
+                const name = path.split('/').pop() ?? path
+                const ext = name.includes('.') ? name.slice(name.lastIndexOf('.')) : ''
+                setSelectedFile({ path, name, ext, focusSymbolId: symbolId })
+                setHomeActiveView(null)
+              }}
+            />
           ) : (
-            /* Brand + SessionTimer live in the persistent top bar above —
-               no per-branch header needed for the WorkspaceHome view. */
-            <WorkspaceHome workspacePath={initialPath} />
+            /* Default home: hero + Quick Actions + file-type guide. */
+            <WorkspaceHome workspacePath={initialPath} onViewChange={setHomeActiveView} />
           )}
         </main>
       </div>
@@ -376,29 +411,236 @@ function FilesRoute() {
   )
 }
 
-function WorkspaceHome({ workspacePath }: { workspacePath: string }) {
+// ─── Workspace Home ─────────────────────────────────────────────────────────
+//
+// The landing surface inside the editor pane when no file is selected.
+// Ported from sylang-hermes' files.tsx so the Sylang analysis features
+// (Coverage / Traceability / FMEA / ASPICE) get first-class entry points
+// on the home page, not just from the NestMenuBar.
+
+// First-class file types in Sylang. Order matches sylang-hermes for
+// visual continuity; extensions and descriptions are the same.
+const FILE_TYPE_INFO = [
+  { ext: '.req', label: 'Requirements', icon: '📋', desc: 'System & software requirements with traceability' },
+  { ext: '.fun', label: 'Functions', icon: '⚙️', desc: 'Functional decomposition & function networks' },
+  { ext: '.blk', label: 'Blocks', icon: '🧱', desc: 'Internal block diagrams & architecture' },
+  { ext: '.fml', label: 'Feature Models', icon: '🌳', desc: 'Product line features & variability' },
+  { ext: '.vml', label: 'Variants', icon: '🔀', desc: 'Variant configurations & selections' },
+  { ext: '.flr', label: 'Failure Modes', icon: '⚠️', desc: 'FMEA failure analysis (AIAG/VDA)' },
+  { ext: '.fta', label: 'Fault Trees', icon: '🌲', desc: 'Fault tree analysis (ISO 26262)' },
+  { ext: '.tst', label: 'Test Cases', icon: '✅', desc: 'Verification & validation test specs' },
+  { ext: '.haz', label: 'Hazards', icon: '🔴', desc: 'Hazard analysis & risk assessment' },
+  { ext: '.ifc', label: 'Interfaces', icon: '🔌', desc: 'Signals, operations & data types' },
+  { ext: '.smd', label: 'State Machines', icon: '🔄', desc: 'State machine diagrams' },
+  { ext: '.ucd', label: 'Use Cases', icon: '👤', desc: 'Use case diagrams & actor mapping' },
+]
+
+// The viewKey strings match `nest-menu-bar.tsx`'s VIEW_MAP and the
+// `InlineView` switch in `SylangFileEditor.tsx`, so a single dispatch
+// table powers both the home Quick Actions and the per-file menu.
+const QUICK_ACTIONS = [
+  { label: 'Coverage Analysis', viewKey: 'coverage', icon: '📊', desc: 'Analyze identifier relationships and coverage' },
+  { label: 'Traceability Graph', viewKey: 'traceability', icon: '🔗', desc: 'Interactive cross-file relationship graph' },
+  { label: 'FMEA AIAG/VDA', viewKey: 'fmea', icon: '⚠️', desc: 'Failure mode and effects analysis' },
+  { label: 'ASPICE Workbench', viewKey: 'aspice', icon: '🏗️', desc: 'Automotive SPICE process assessment' },
+]
+
+function WorkspaceHome({
+  workspacePath,
+  onViewChange,
+}: {
+  workspacePath: string
+  onViewChange?: (view: string) => void
+}) {
   const segments = workspacePath.split('/').filter(Boolean)
-  const repoName = segments.length >= 3 ? segments[2] : segments.pop() ?? 'Workspace'
+  const repoName = segments.length >= 3 ? segments[2] : (segments.pop() ?? 'Workspace')
 
   return (
     <div className="flex-1 overflow-y-auto" style={{ background: 'var(--theme-bg)' }}>
-      <div className="max-w-3xl mx-auto px-8 py-12">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--theme-text)' }}>
-            {repoName}
-          </h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--theme-muted)' }}>
-            Select a file from the sidebar to start editing.
-          </p>
+      <div className="max-w-4xl mx-auto px-8 py-10">
+        {/* Hero */}
+        <div className="flex items-center gap-4 mb-10">
+          <div
+            className="h-14 w-14 rounded-2xl shadow-lg flex items-center justify-center text-3xl"
+            style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)' }}
+          >
+            🛰️
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--theme-text)' }}>
+              {repoName}
+            </h1>
+            <p className="text-sm mt-0.5" style={{ color: 'var(--theme-muted)' }}>
+              Model-Based Systems Engineering Workspace
+            </p>
+          </div>
         </div>
-        <div className="rounded-xl px-5 py-4" style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)' }}>
-          <div className="text-sm font-semibold mb-2" style={{ color: 'var(--theme-text)' }}>Hermes Studio</div>
+
+        {/* Quick Actions — Coverage / Traceability / FMEA / ASPICE. */}
+        <div className="mb-10">
+          <h2
+            className="text-xs font-semibold uppercase tracking-wider mb-3"
+            style={{ color: 'var(--theme-muted)' }}
+          >
+            Quick Actions
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {QUICK_ACTIONS.map((action) => (
+              <button
+                key={action.viewKey}
+                onClick={() => onViewChange?.(action.viewKey)}
+                className="rounded-xl px-4 py-4 text-left transition-all hover:scale-[1.02]"
+                style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)' }}
+              >
+                <div className="text-2xl mb-2">{action.icon}</div>
+                <div className="text-sm font-semibold" style={{ color: 'var(--theme-text)' }}>
+                  {action.label}
+                </div>
+                <div className="text-[11px] mt-1 leading-snug" style={{ color: 'var(--theme-muted)' }}>
+                  {action.desc}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* File-type guide — what each extension means. Purely
+            informational; clicking doesn't filter. */}
+        <div className="mb-10">
+          <h2
+            className="text-xs font-semibold uppercase tracking-wider mb-3"
+            style={{ color: 'var(--theme-muted)' }}
+          >
+            Sylang File Types
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {FILE_TYPE_INFO.map((ft) => (
+              <div
+                key={ft.ext}
+                className="flex items-start gap-3 rounded-lg px-3 py-2.5"
+                style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)' }}
+              >
+                <span className="text-lg shrink-0">{ft.icon}</span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold" style={{ color: 'var(--theme-text)' }}>
+                      {ft.label}
+                    </span>
+                    <span
+                      className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                      style={{ background: 'var(--theme-card2)', color: 'var(--theme-accent)' }}
+                    >
+                      {ft.ext}
+                    </span>
+                  </div>
+                  <div
+                    className="text-[11px] mt-0.5 leading-snug"
+                    style={{ color: 'var(--theme-muted)' }}
+                  >
+                    {ft.desc}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Standards callout — kept short. */}
+        <div
+          className="rounded-xl px-5 py-4"
+          style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)' }}
+        >
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-lg">🛡️</span>
+            <span className="text-sm font-semibold" style={{ color: 'var(--theme-text)' }}>
+              Built for Safety-Critical Engineering
+            </span>
+          </div>
           <p className="text-xs leading-relaxed" style={{ color: 'var(--theme-muted)' }}>
-            An AI agent workspace with chat, files, terminal, memory, and skills.
-            Browse and edit any text file via the file explorer; richer editors
-            load automatically for supported formats (e.g. .jot).
+            Sylang supports ISO 26262 functional safety, Automotive SPICE process compliance,
+            FMEA AIAG/VDA failure analysis, and product line engineering (150% model). Select a
+            file from the sidebar to start editing, or use the quick actions above to analyze
+            your project.
           </p>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── InlineViewHome ─────────────────────────────────────────────────────────
+//
+// Wrapper that renders one of the inline analysis views (coverage,
+// traceability, fmea, …) on the home page, with a "← Back to Home"
+// affordance to return to the Quick Actions. The actual workbench
+// components are the same ones SylangFileEditor uses — lazy-loaded so
+// the home bundle stays small.
+
+const HomeCoverageView = lazy(() => import('@/components/sylang-editor/inline-views/coverage-view'))
+const HomeTraceabilityView = lazy(() => import('@/components/sylang-editor/inline-views/traceability-view'))
+const HomeFmeaView = lazy(() => import('@/components/sylang-editor/inline-views/fmea-view'))
+
+function InlineViewHome({
+  view,
+  workspace,
+  onClose,
+  onNavigate,
+}: {
+  view: string
+  workspace: string
+  onClose: () => void
+  onNavigate?: (path: string, symbolId?: string) => void
+}) {
+  // Strip anything beyond `userId/owner/repo` — workspace prefix is what
+  // each /api/sylang/* route expects.
+  const ws = workspace.split('/').filter(Boolean).slice(0, 3).join('/')
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      <div
+        className="flex items-center gap-2 px-3 py-1 shrink-0"
+        style={{ borderBottom: '1px solid var(--theme-border)' }}
+      >
+        <button
+          onClick={onClose}
+          className="text-xs px-2 py-0.5 rounded font-medium hover:bg-white/10"
+          style={{ color: 'var(--theme-accent)' }}
+        >
+          ← Back to Home
+        </button>
+      </div>
+      <div
+        className={`flex-1 min-h-0 ${view === 'traceability' ? 'overflow-hidden' : 'overflow-y-auto'}`}
+        style={{ background: 'var(--theme-bg)' }}
+      >
+        <Suspense
+          fallback={
+            <div
+              className="flex items-center justify-center py-20 gap-3"
+              style={{ color: 'var(--theme-muted)' }}
+            >
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-white/70" />
+              Loading…
+            </div>
+          }
+        >
+          {view === 'coverage' && <HomeCoverageView workspace={ws} onNavigate={onNavigate} />}
+          {view === 'traceability' && <HomeTraceabilityView workspace={ws} />}
+          {view === 'fmea' && <HomeFmeaView workspace={ws} />}
+          {(view === 'aspice' || view === 'iso26262') && (
+            <div
+              className="flex flex-col items-center justify-center gap-3 py-20 text-center"
+              style={{ color: 'var(--theme-muted)' }}
+            >
+              <div className="text-base font-medium" style={{ color: 'var(--theme-text)' }}>
+                {view} — coming soon
+              </div>
+              <div className="text-xs max-w-sm">
+                The analyzer for this view hasn't landed in <code>@sylang-core</code> yet.
+              </div>
+            </div>
+          )}
+        </Suspense>
       </div>
     </div>
   )

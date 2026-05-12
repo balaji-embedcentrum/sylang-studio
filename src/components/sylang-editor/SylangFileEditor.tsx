@@ -24,6 +24,8 @@ import { NestMenuBar } from './nest-menu-bar'
 // route. New views (Coverage, Traceability, etc.) follow the same shape
 // and slot into the switch at the bottom of this file.
 const FmeaView = lazy(() => import('./inline-views/fmea-view'))
+const CoverageView = lazy(() => import('./inline-views/coverage-view'))
+const TraceabilityView = lazy(() => import('./inline-views/traceability-view'))
 
 type SaveStatus = 'saved' | 'saving' | 'unsaved' | null
 
@@ -218,7 +220,7 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
               </div>
             }
           >
-            <InlineView view={activeView} workspace={workspacePrefix} />
+            <InlineView view={activeView} workspace={workspacePrefix} onNavigate={onNavigate} />
           </Suspense>
         </div>
       )}
@@ -647,10 +649,27 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
  * doesn't implement them either; we keep the menu entries so the shape
  * matches and add real impls when the analyzer logic lands in sylang-core.
  */
-function InlineView({ view, workspace }: { view: string; workspace: string }) {
+function InlineView({
+  view,
+  workspace,
+  onNavigate,
+}: {
+  view: string
+  workspace: string
+  /**
+   * Forwarded so coverage's clickable identifiers can switch the active
+   * file just like the editor's own relation chips do. Other views (FMEA,
+   * traceability) handle navigation internally for now.
+   */
+  onNavigate?: (path: string, symbolId?: string) => void
+}) {
   switch (view) {
     case 'fmea':
       return <FmeaView workspace={workspace} />
+    case 'coverage':
+      return <CoverageView workspace={workspace} onNavigate={onNavigate} />
+    case 'traceability':
+      return <TraceabilityView workspace={workspace} />
     case 'iso26262':
     case 'aspice':
       return <ComingSoon view={view} />

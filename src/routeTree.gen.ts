@@ -60,12 +60,14 @@ import { Route as ApiWorkspacesListRouteImport } from './routes/api/workspaces/l
 import { Route as ApiWorkspacesCreateRouteImport } from './routes/api/workspaces/create'
 import { Route as ApiWorkspacesCloneRouteImport } from './routes/api/workspaces/clone'
 import { Route as ApiSylangVariantMatrixRouteImport } from './routes/api/sylang/variant-matrix'
+import { Route as ApiSylangTraceabilityRouteImport } from './routes/api/sylang/traceability'
 import { Route as ApiSylangSymbolsRouteImport } from './routes/api/sylang/symbols'
 import { Route as ApiSylangSymbolDetailsRouteImport } from './routes/api/sylang/symbol-details'
 import { Route as ApiSylangSpecRenderRouteImport } from './routes/api/sylang/spec-render'
 import { Route as ApiSylangFmeaRouteImport } from './routes/api/sylang/fmea'
 import { Route as ApiSylangDiagramRouteImport } from './routes/api/sylang/diagram'
 import { Route as ApiSylangDashRenderRouteImport } from './routes/api/sylang/dash-render'
+import { Route as ApiSylangCoverageRouteImport } from './routes/api/sylang/coverage'
 import { Route as ApiSkillsUninstallRouteImport } from './routes/api/skills/uninstall'
 import { Route as ApiSkillsInstallRouteImport } from './routes/api/skills/install'
 import { Route as ApiSkillsHubSearchRouteImport } from './routes/api/skills/hub-search'
@@ -360,6 +362,11 @@ const ApiSylangVariantMatrixRoute = ApiSylangVariantMatrixRouteImport.update({
   path: '/api/sylang/variant-matrix',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSylangTraceabilityRoute = ApiSylangTraceabilityRouteImport.update({
+  id: '/api/sylang/traceability',
+  path: '/api/sylang/traceability',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSylangSymbolsRoute = ApiSylangSymbolsRouteImport.update({
   id: '/api/sylang/symbols',
   path: '/api/sylang/symbols',
@@ -388,6 +395,11 @@ const ApiSylangDiagramRoute = ApiSylangDiagramRouteImport.update({
 const ApiSylangDashRenderRoute = ApiSylangDashRenderRouteImport.update({
   id: '/api/sylang/dash-render',
   path: '/api/sylang/dash-render',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSylangCoverageRoute = ApiSylangCoverageRouteImport.update({
+  id: '/api/sylang/coverage',
+  path: '/api/sylang/coverage',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSkillsUninstallRoute = ApiSkillsUninstallRouteImport.update({
@@ -667,12 +679,14 @@ export interface FileRoutesByFullPath {
   '/api/skills/hub-search': typeof ApiSkillsHubSearchRoute
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
+  '/api/sylang/coverage': typeof ApiSylangCoverageRoute
   '/api/sylang/dash-render': typeof ApiSylangDashRenderRoute
   '/api/sylang/diagram': typeof ApiSylangDiagramRoute
   '/api/sylang/fmea': typeof ApiSylangFmeaRoute
   '/api/sylang/spec-render': typeof ApiSylangSpecRenderRoute
   '/api/sylang/symbol-details': typeof ApiSylangSymbolDetailsRoute
   '/api/sylang/symbols': typeof ApiSylangSymbolsRoute
+  '/api/sylang/traceability': typeof ApiSylangTraceabilityRoute
   '/api/sylang/variant-matrix': typeof ApiSylangVariantMatrixRoute
   '/api/workspaces/clone': typeof ApiWorkspacesCloneRoute
   '/api/workspaces/create': typeof ApiWorkspacesCreateRoute
@@ -763,12 +777,14 @@ export interface FileRoutesByTo {
   '/api/skills/hub-search': typeof ApiSkillsHubSearchRoute
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
+  '/api/sylang/coverage': typeof ApiSylangCoverageRoute
   '/api/sylang/dash-render': typeof ApiSylangDashRenderRoute
   '/api/sylang/diagram': typeof ApiSylangDiagramRoute
   '/api/sylang/fmea': typeof ApiSylangFmeaRoute
   '/api/sylang/spec-render': typeof ApiSylangSpecRenderRoute
   '/api/sylang/symbol-details': typeof ApiSylangSymbolDetailsRoute
   '/api/sylang/symbols': typeof ApiSylangSymbolsRoute
+  '/api/sylang/traceability': typeof ApiSylangTraceabilityRoute
   '/api/sylang/variant-matrix': typeof ApiSylangVariantMatrixRoute
   '/api/workspaces/clone': typeof ApiWorkspacesCloneRoute
   '/api/workspaces/create': typeof ApiWorkspacesCreateRoute
@@ -861,12 +877,14 @@ export interface FileRoutesById {
   '/api/skills/hub-search': typeof ApiSkillsHubSearchRoute
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
+  '/api/sylang/coverage': typeof ApiSylangCoverageRoute
   '/api/sylang/dash-render': typeof ApiSylangDashRenderRoute
   '/api/sylang/diagram': typeof ApiSylangDiagramRoute
   '/api/sylang/fmea': typeof ApiSylangFmeaRoute
   '/api/sylang/spec-render': typeof ApiSylangSpecRenderRoute
   '/api/sylang/symbol-details': typeof ApiSylangSymbolDetailsRoute
   '/api/sylang/symbols': typeof ApiSylangSymbolsRoute
+  '/api/sylang/traceability': typeof ApiSylangTraceabilityRoute
   '/api/sylang/variant-matrix': typeof ApiSylangVariantMatrixRoute
   '/api/workspaces/clone': typeof ApiWorkspacesCloneRoute
   '/api/workspaces/create': typeof ApiWorkspacesCreateRoute
@@ -960,12 +978,14 @@ export interface FileRouteTypes {
     | '/api/skills/hub-search'
     | '/api/skills/install'
     | '/api/skills/uninstall'
+    | '/api/sylang/coverage'
     | '/api/sylang/dash-render'
     | '/api/sylang/diagram'
     | '/api/sylang/fmea'
     | '/api/sylang/spec-render'
     | '/api/sylang/symbol-details'
     | '/api/sylang/symbols'
+    | '/api/sylang/traceability'
     | '/api/sylang/variant-matrix'
     | '/api/workspaces/clone'
     | '/api/workspaces/create'
@@ -1056,12 +1076,14 @@ export interface FileRouteTypes {
     | '/api/skills/hub-search'
     | '/api/skills/install'
     | '/api/skills/uninstall'
+    | '/api/sylang/coverage'
     | '/api/sylang/dash-render'
     | '/api/sylang/diagram'
     | '/api/sylang/fmea'
     | '/api/sylang/spec-render'
     | '/api/sylang/symbol-details'
     | '/api/sylang/symbols'
+    | '/api/sylang/traceability'
     | '/api/sylang/variant-matrix'
     | '/api/workspaces/clone'
     | '/api/workspaces/create'
@@ -1153,12 +1175,14 @@ export interface FileRouteTypes {
     | '/api/skills/hub-search'
     | '/api/skills/install'
     | '/api/skills/uninstall'
+    | '/api/sylang/coverage'
     | '/api/sylang/dash-render'
     | '/api/sylang/diagram'
     | '/api/sylang/fmea'
     | '/api/sylang/spec-render'
     | '/api/sylang/symbol-details'
     | '/api/sylang/symbols'
+    | '/api/sylang/traceability'
     | '/api/sylang/variant-matrix'
     | '/api/workspaces/clone'
     | '/api/workspaces/create'
@@ -1236,12 +1260,14 @@ export interface RootRouteChildren {
   ApiProfilesListRoute: typeof ApiProfilesListRoute
   ApiProfilesReadRoute: typeof ApiProfilesReadRoute
   ApiProfilesRenameRoute: typeof ApiProfilesRenameRoute
+  ApiSylangCoverageRoute: typeof ApiSylangCoverageRoute
   ApiSylangDashRenderRoute: typeof ApiSylangDashRenderRoute
   ApiSylangDiagramRoute: typeof ApiSylangDiagramRoute
   ApiSylangFmeaRoute: typeof ApiSylangFmeaRoute
   ApiSylangSpecRenderRoute: typeof ApiSylangSpecRenderRoute
   ApiSylangSymbolDetailsRoute: typeof ApiSylangSymbolDetailsRoute
   ApiSylangSymbolsRoute: typeof ApiSylangSymbolsRoute
+  ApiSylangTraceabilityRoute: typeof ApiSylangTraceabilityRoute
   ApiSylangVariantMatrixRoute: typeof ApiSylangVariantMatrixRoute
   ApiWorkspacesCloneRoute: typeof ApiWorkspacesCloneRoute
   ApiWorkspacesCreateRoute: typeof ApiWorkspacesCreateRoute
@@ -1608,6 +1634,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSylangVariantMatrixRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/sylang/traceability': {
+      id: '/api/sylang/traceability'
+      path: '/api/sylang/traceability'
+      fullPath: '/api/sylang/traceability'
+      preLoaderRoute: typeof ApiSylangTraceabilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/sylang/symbols': {
       id: '/api/sylang/symbols'
       path: '/api/sylang/symbols'
@@ -1648,6 +1681,13 @@ declare module '@tanstack/react-router' {
       path: '/api/sylang/dash-render'
       fullPath: '/api/sylang/dash-render'
       preLoaderRoute: typeof ApiSylangDashRenderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sylang/coverage': {
+      id: '/api/sylang/coverage'
+      path: '/api/sylang/coverage'
+      fullPath: '/api/sylang/coverage'
+      preLoaderRoute: typeof ApiSylangCoverageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/skills/uninstall': {
@@ -2080,12 +2120,14 @@ const rootRouteChildren: RootRouteChildren = {
   ApiProfilesListRoute: ApiProfilesListRoute,
   ApiProfilesReadRoute: ApiProfilesReadRoute,
   ApiProfilesRenameRoute: ApiProfilesRenameRoute,
+  ApiSylangCoverageRoute: ApiSylangCoverageRoute,
   ApiSylangDashRenderRoute: ApiSylangDashRenderRoute,
   ApiSylangDiagramRoute: ApiSylangDiagramRoute,
   ApiSylangFmeaRoute: ApiSylangFmeaRoute,
   ApiSylangSpecRenderRoute: ApiSylangSpecRenderRoute,
   ApiSylangSymbolDetailsRoute: ApiSylangSymbolDetailsRoute,
   ApiSylangSymbolsRoute: ApiSylangSymbolsRoute,
+  ApiSylangTraceabilityRoute: ApiSylangTraceabilityRoute,
   ApiSylangVariantMatrixRoute: ApiSylangVariantMatrixRoute,
   ApiWorkspacesCloneRoute: ApiWorkspacesCloneRoute,
   ApiWorkspacesCreateRoute: ApiWorkspacesCreateRoute,
