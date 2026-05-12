@@ -62,7 +62,9 @@ import { Route as ApiWorkspacesCloneRouteImport } from './routes/api/workspaces/
 import { Route as ApiSylangVariantMatrixRouteImport } from './routes/api/sylang/variant-matrix'
 import { Route as ApiSylangSymbolsRouteImport } from './routes/api/sylang/symbols'
 import { Route as ApiSylangSymbolDetailsRouteImport } from './routes/api/sylang/symbol-details'
+import { Route as ApiSylangSpecRenderRouteImport } from './routes/api/sylang/spec-render'
 import { Route as ApiSylangDiagramRouteImport } from './routes/api/sylang/diagram'
+import { Route as ApiSylangDashRenderRouteImport } from './routes/api/sylang/dash-render'
 import { Route as ApiSkillsUninstallRouteImport } from './routes/api/skills/uninstall'
 import { Route as ApiSkillsInstallRouteImport } from './routes/api/skills/install'
 import { Route as ApiSkillsHubSearchRouteImport } from './routes/api/skills/hub-search'
@@ -367,9 +369,19 @@ const ApiSylangSymbolDetailsRoute = ApiSylangSymbolDetailsRouteImport.update({
   path: '/api/sylang/symbol-details',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSylangSpecRenderRoute = ApiSylangSpecRenderRouteImport.update({
+  id: '/api/sylang/spec-render',
+  path: '/api/sylang/spec-render',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSylangDiagramRoute = ApiSylangDiagramRouteImport.update({
   id: '/api/sylang/diagram',
   path: '/api/sylang/diagram',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSylangDashRenderRoute = ApiSylangDashRenderRouteImport.update({
+  id: '/api/sylang/dash-render',
+  path: '/api/sylang/dash-render',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSkillsUninstallRoute = ApiSkillsUninstallRouteImport.update({
@@ -649,7 +661,9 @@ export interface FileRoutesByFullPath {
   '/api/skills/hub-search': typeof ApiSkillsHubSearchRoute
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
+  '/api/sylang/dash-render': typeof ApiSylangDashRenderRoute
   '/api/sylang/diagram': typeof ApiSylangDiagramRoute
+  '/api/sylang/spec-render': typeof ApiSylangSpecRenderRoute
   '/api/sylang/symbol-details': typeof ApiSylangSymbolDetailsRoute
   '/api/sylang/symbols': typeof ApiSylangSymbolsRoute
   '/api/sylang/variant-matrix': typeof ApiSylangVariantMatrixRoute
@@ -742,7 +756,9 @@ export interface FileRoutesByTo {
   '/api/skills/hub-search': typeof ApiSkillsHubSearchRoute
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
+  '/api/sylang/dash-render': typeof ApiSylangDashRenderRoute
   '/api/sylang/diagram': typeof ApiSylangDiagramRoute
+  '/api/sylang/spec-render': typeof ApiSylangSpecRenderRoute
   '/api/sylang/symbol-details': typeof ApiSylangSymbolDetailsRoute
   '/api/sylang/symbols': typeof ApiSylangSymbolsRoute
   '/api/sylang/variant-matrix': typeof ApiSylangVariantMatrixRoute
@@ -837,7 +853,9 @@ export interface FileRoutesById {
   '/api/skills/hub-search': typeof ApiSkillsHubSearchRoute
   '/api/skills/install': typeof ApiSkillsInstallRoute
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
+  '/api/sylang/dash-render': typeof ApiSylangDashRenderRoute
   '/api/sylang/diagram': typeof ApiSylangDiagramRoute
+  '/api/sylang/spec-render': typeof ApiSylangSpecRenderRoute
   '/api/sylang/symbol-details': typeof ApiSylangSymbolDetailsRoute
   '/api/sylang/symbols': typeof ApiSylangSymbolsRoute
   '/api/sylang/variant-matrix': typeof ApiSylangVariantMatrixRoute
@@ -933,7 +951,9 @@ export interface FileRouteTypes {
     | '/api/skills/hub-search'
     | '/api/skills/install'
     | '/api/skills/uninstall'
+    | '/api/sylang/dash-render'
     | '/api/sylang/diagram'
+    | '/api/sylang/spec-render'
     | '/api/sylang/symbol-details'
     | '/api/sylang/symbols'
     | '/api/sylang/variant-matrix'
@@ -1026,7 +1046,9 @@ export interface FileRouteTypes {
     | '/api/skills/hub-search'
     | '/api/skills/install'
     | '/api/skills/uninstall'
+    | '/api/sylang/dash-render'
     | '/api/sylang/diagram'
+    | '/api/sylang/spec-render'
     | '/api/sylang/symbol-details'
     | '/api/sylang/symbols'
     | '/api/sylang/variant-matrix'
@@ -1120,7 +1142,9 @@ export interface FileRouteTypes {
     | '/api/skills/hub-search'
     | '/api/skills/install'
     | '/api/skills/uninstall'
+    | '/api/sylang/dash-render'
     | '/api/sylang/diagram'
+    | '/api/sylang/spec-render'
     | '/api/sylang/symbol-details'
     | '/api/sylang/symbols'
     | '/api/sylang/variant-matrix'
@@ -1200,7 +1224,9 @@ export interface RootRouteChildren {
   ApiProfilesListRoute: typeof ApiProfilesListRoute
   ApiProfilesReadRoute: typeof ApiProfilesReadRoute
   ApiProfilesRenameRoute: typeof ApiProfilesRenameRoute
+  ApiSylangDashRenderRoute: typeof ApiSylangDashRenderRoute
   ApiSylangDiagramRoute: typeof ApiSylangDiagramRoute
+  ApiSylangSpecRenderRoute: typeof ApiSylangSpecRenderRoute
   ApiSylangSymbolDetailsRoute: typeof ApiSylangSymbolDetailsRoute
   ApiSylangSymbolsRoute: typeof ApiSylangSymbolsRoute
   ApiSylangVariantMatrixRoute: typeof ApiSylangVariantMatrixRoute
@@ -1583,11 +1609,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSylangSymbolDetailsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/sylang/spec-render': {
+      id: '/api/sylang/spec-render'
+      path: '/api/sylang/spec-render'
+      fullPath: '/api/sylang/spec-render'
+      preLoaderRoute: typeof ApiSylangSpecRenderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/sylang/diagram': {
       id: '/api/sylang/diagram'
       path: '/api/sylang/diagram'
       fullPath: '/api/sylang/diagram'
       preLoaderRoute: typeof ApiSylangDiagramRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sylang/dash-render': {
+      id: '/api/sylang/dash-render'
+      path: '/api/sylang/dash-render'
+      fullPath: '/api/sylang/dash-render'
+      preLoaderRoute: typeof ApiSylangDashRenderRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/skills/uninstall': {
@@ -2020,7 +2060,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiProfilesListRoute: ApiProfilesListRoute,
   ApiProfilesReadRoute: ApiProfilesReadRoute,
   ApiProfilesRenameRoute: ApiProfilesRenameRoute,
+  ApiSylangDashRenderRoute: ApiSylangDashRenderRoute,
   ApiSylangDiagramRoute: ApiSylangDiagramRoute,
+  ApiSylangSpecRenderRoute: ApiSylangSpecRenderRoute,
   ApiSylangSymbolDetailsRoute: ApiSylangSymbolDetailsRoute,
   ApiSylangSymbolsRoute: ApiSylangSymbolsRoute,
   ApiSylangVariantMatrixRoute: ApiSylangVariantMatrixRoute,

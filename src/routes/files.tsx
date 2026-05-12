@@ -9,12 +9,24 @@ import {
   SylangFileEditor,
   isSylangFile,
 } from '@/components/sylang-editor/SylangFileEditor'
+import { SpecViewer } from '@/components/spec-dash/SpecViewer'
+import { DashViewer } from '@/components/spec-dash/DashViewer'
 import { useWorkspaceStore } from '@/stores/workspace-store'
 import { SessionTimer } from '@/components/session-timer'
 import { GitDiffView, type GitDiffSelection } from '@/components/git-panel'
 
 function isJotxFile(name: string): boolean {
   return name.endsWith('.jot')
+}
+
+// .spec / .dash use the @sylang-core/spec-dash server pipeline — text →
+// parser → renderer → HTML string → sandboxed iframe. They aren't
+// edited inline (yet); the viewer is read-only HTML for now.
+function isSpecFile(name: string): boolean {
+  return name.endsWith('.spec')
+}
+function isDashFile(name: string): boolean {
+  return name.endsWith('.dash')
 }
 
 const INITIAL_EDITOR_VALUE = `// Files workspace
@@ -135,10 +147,15 @@ function FilesRoute() {
     setSelectedDiff(null)
     setSelectedFile({ path: entry.path, name: entry.name, ext })
     setSavedOk(false)
-    // Jotx and Sylang editors do their own file I/O; CodeMirror branch
-    // is the only one that needs the host to pre-load the content into
-    // editorValue.
-    if (!isJotxFile(entry.name) && !isSylangFile(entry.name)) {
+    // Jotx, Sylang, Spec, and Dash viewers do their own file I/O;
+    // CodeMirror branch is the only one that needs the host to pre-load
+    // the content into editorValue.
+    if (
+      !isJotxFile(entry.name) &&
+      !isSylangFile(entry.name) &&
+      !isSpecFile(entry.name) &&
+      !isDashFile(entry.name)
+    ) {
       try {
         const res = await fetch(`/api/files?action=read&path=${encodeURIComponent(entry.path)}`)
         if (res.ok) {
@@ -245,6 +262,33 @@ function FilesRoute() {
             />
           ) : selectedFile && isJotxFile(selectedFile.name) ? (
             <JotxFileEditor
+              filePath={selectedFile.path}
+              fileName={selectedFile.name}
+            />
+          ) : selectedFile && isSpecFile(selectedFile.name) ? (
+            /* .spec / .dash MUST be checked before isSylangFile — the
+               sylang-core registry classifies them as Sylang file types
+               (`SYLANG_FILE_EXTENSIONS` includes `.spec` and `.dash`),
+               so isSylangFile() returns true for both. Without these two
+               branches landing first, .spec and .dash files would open
+               in the TipTap Sylang editor instead of their HTML renderers. */
+            <SpecViewer
+              filePath={selectedFile.path}
+              fileName={selectedFile.name}
+              onNavigate={(path) => {
+                /* Embedded `View Diagram` buttons inside a .spec ask
+                   the host to open the referenced .blk / .ucd / etc.
+                   Same shape SylangFileEditor uses for click-to-id
+                   nav — set selectedFile, don't change the URL. */
+                const name = path.split('/').pop() ?? path
+                const ext = name.includes('.')
+                  ? name.slice(name.lastIndexOf('.'))
+                  : ''
+                setSelectedFile({ path, name, ext })
+              }}
+            />
+          ) : selectedFile && isDashFile(selectedFile.name) ? (
+            <DashViewer
               filePath={selectedFile.path}
               fileName={selectedFile.name}
             />

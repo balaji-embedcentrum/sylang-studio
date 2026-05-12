@@ -74,6 +74,9 @@ importers:
       '@sylang-core/registry':
         specifier: link:../sylang-core/packages/registry
         version: link:../sylang-core/packages/registry
+      '@sylang-core/spec-dash':
+        specifier: link:../sylang-core/packages/spec-dash
+        version: link:../sylang-core/packages/spec-dash
       '@sylang-core/tiptap':
         specifier: link:../sylang-core/packages/tiptap
         version: link:../sylang-core/packages/tiptap
