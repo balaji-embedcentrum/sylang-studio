@@ -63,6 +63,7 @@ import { Route as ApiSylangVariantMatrixRouteImport } from './routes/api/sylang/
 import { Route as ApiSylangSymbolsRouteImport } from './routes/api/sylang/symbols'
 import { Route as ApiSylangSymbolDetailsRouteImport } from './routes/api/sylang/symbol-details'
 import { Route as ApiSylangSpecRenderRouteImport } from './routes/api/sylang/spec-render'
+import { Route as ApiSylangFmeaRouteImport } from './routes/api/sylang/fmea'
 import { Route as ApiSylangDiagramRouteImport } from './routes/api/sylang/diagram'
 import { Route as ApiSylangDashRenderRouteImport } from './routes/api/sylang/dash-render'
 import { Route as ApiSkillsUninstallRouteImport } from './routes/api/skills/uninstall'
@@ -374,6 +375,11 @@ const ApiSylangSpecRenderRoute = ApiSylangSpecRenderRouteImport.update({
   path: '/api/sylang/spec-render',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSylangFmeaRoute = ApiSylangFmeaRouteImport.update({
+  id: '/api/sylang/fmea',
+  path: '/api/sylang/fmea',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSylangDiagramRoute = ApiSylangDiagramRouteImport.update({
   id: '/api/sylang/diagram',
   path: '/api/sylang/diagram',
@@ -663,6 +669,7 @@ export interface FileRoutesByFullPath {
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
   '/api/sylang/dash-render': typeof ApiSylangDashRenderRoute
   '/api/sylang/diagram': typeof ApiSylangDiagramRoute
+  '/api/sylang/fmea': typeof ApiSylangFmeaRoute
   '/api/sylang/spec-render': typeof ApiSylangSpecRenderRoute
   '/api/sylang/symbol-details': typeof ApiSylangSymbolDetailsRoute
   '/api/sylang/symbols': typeof ApiSylangSymbolsRoute
@@ -758,6 +765,7 @@ export interface FileRoutesByTo {
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
   '/api/sylang/dash-render': typeof ApiSylangDashRenderRoute
   '/api/sylang/diagram': typeof ApiSylangDiagramRoute
+  '/api/sylang/fmea': typeof ApiSylangFmeaRoute
   '/api/sylang/spec-render': typeof ApiSylangSpecRenderRoute
   '/api/sylang/symbol-details': typeof ApiSylangSymbolDetailsRoute
   '/api/sylang/symbols': typeof ApiSylangSymbolsRoute
@@ -855,6 +863,7 @@ export interface FileRoutesById {
   '/api/skills/uninstall': typeof ApiSkillsUninstallRoute
   '/api/sylang/dash-render': typeof ApiSylangDashRenderRoute
   '/api/sylang/diagram': typeof ApiSylangDiagramRoute
+  '/api/sylang/fmea': typeof ApiSylangFmeaRoute
   '/api/sylang/spec-render': typeof ApiSylangSpecRenderRoute
   '/api/sylang/symbol-details': typeof ApiSylangSymbolDetailsRoute
   '/api/sylang/symbols': typeof ApiSylangSymbolsRoute
@@ -953,6 +962,7 @@ export interface FileRouteTypes {
     | '/api/skills/uninstall'
     | '/api/sylang/dash-render'
     | '/api/sylang/diagram'
+    | '/api/sylang/fmea'
     | '/api/sylang/spec-render'
     | '/api/sylang/symbol-details'
     | '/api/sylang/symbols'
@@ -1048,6 +1058,7 @@ export interface FileRouteTypes {
     | '/api/skills/uninstall'
     | '/api/sylang/dash-render'
     | '/api/sylang/diagram'
+    | '/api/sylang/fmea'
     | '/api/sylang/spec-render'
     | '/api/sylang/symbol-details'
     | '/api/sylang/symbols'
@@ -1144,6 +1155,7 @@ export interface FileRouteTypes {
     | '/api/skills/uninstall'
     | '/api/sylang/dash-render'
     | '/api/sylang/diagram'
+    | '/api/sylang/fmea'
     | '/api/sylang/spec-render'
     | '/api/sylang/symbol-details'
     | '/api/sylang/symbols'
@@ -1226,6 +1238,7 @@ export interface RootRouteChildren {
   ApiProfilesRenameRoute: typeof ApiProfilesRenameRoute
   ApiSylangDashRenderRoute: typeof ApiSylangDashRenderRoute
   ApiSylangDiagramRoute: typeof ApiSylangDiagramRoute
+  ApiSylangFmeaRoute: typeof ApiSylangFmeaRoute
   ApiSylangSpecRenderRoute: typeof ApiSylangSpecRenderRoute
   ApiSylangSymbolDetailsRoute: typeof ApiSylangSymbolDetailsRoute
   ApiSylangSymbolsRoute: typeof ApiSylangSymbolsRoute
@@ -1614,6 +1627,13 @@ declare module '@tanstack/react-router' {
       path: '/api/sylang/spec-render'
       fullPath: '/api/sylang/spec-render'
       preLoaderRoute: typeof ApiSylangSpecRenderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sylang/fmea': {
+      id: '/api/sylang/fmea'
+      path: '/api/sylang/fmea'
+      fullPath: '/api/sylang/fmea'
+      preLoaderRoute: typeof ApiSylangFmeaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/sylang/diagram': {
@@ -2062,6 +2082,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiProfilesRenameRoute: ApiProfilesRenameRoute,
   ApiSylangDashRenderRoute: ApiSylangDashRenderRoute,
   ApiSylangDiagramRoute: ApiSylangDiagramRoute,
+  ApiSylangFmeaRoute: ApiSylangFmeaRoute,
   ApiSylangSpecRenderRoute: ApiSylangSpecRenderRoute,
   ApiSylangSymbolDetailsRoute: ApiSylangSymbolDetailsRoute,
   ApiSylangSymbolsRoute: ApiSylangSymbolsRoute,

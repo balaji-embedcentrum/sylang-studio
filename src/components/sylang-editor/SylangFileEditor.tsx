@@ -7,7 +7,7 @@
  * SylangTiptapDocument, hands the doc off to <SylangEditor />, and saves the
  * serialized DSL back when the editor reports a content change.
  */
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { useWorkspaceStore } from '@/stores/workspace-store'
 import { localReadFile, localWriteFile } from '@/lib/local-file-ops'
 import {
@@ -17,6 +17,13 @@ import {
   isSylangFile,
   type SylangTiptapDocument,
 } from '@sylang-core/react'
+import { NestMenuBar } from './nest-menu-bar'
+
+// Inline views are lazy-loaded to keep the initial editor bundle small.
+// Each one is a self-contained React component bound to an analysis API
+// route. New views (Coverage, Traceability, etc.) follow the same shape
+// and slot into the switch at the bottom of this file.
+const FmeaView = lazy(() => import('./inline-views/fmea-view'))
 
 type SaveStatus = 'saved' | 'saving' | 'unsaved' | null
 
@@ -48,6 +55,11 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
   const [doc, setDoc] = useState<SylangTiptapDocument | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // Which inline view (FMEA, Coverage, …) is currently overriding the
+  // editor body. `null` means "show the regular Sylang editor". Each
+  // sylang file gets its own activeView state — switching files resets
+  // it back to null via the useEffect below.
+  const [activeView, setActiveView] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>(null)
   const pendingSave = useRef<ReturnType<typeof setTimeout> | null>(null)
   const originalContentRef = useRef<string>('')
@@ -63,6 +75,14 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
   // Used to scope iframe-side requests (symbol lookups etc.) to the right
   // workspace and to translate symbol-id navigation back into a file path.
   const workspacePrefix = filePath.split('/').filter(Boolean).slice(0, 3).join('/')
+
+  // Reset the active inline view whenever the user navigates to a
+  // different sylang file. Without this, opening File A → switching to
+  // its FMEA view → opening File B would leave File B showing File A's
+  // FMEA workbench.
+  useEffect(() => {
+    setActiveView(null)
+  }, [filePath])
 
   useEffect(() => {
     let cancelled = false
@@ -159,13 +179,57 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
 
   return (
     <div className="relative flex flex-col h-full min-h-0">
+      {/* NestMenuBar — Analysis + Process dropdowns. Sits ABOVE the
+          editor iframe so it never disappears when the iframe takes
+          focus. Git intentionally skipped (host has a richer git panel
+          via /api/git already). */}
+      <div
+        className="flex items-center gap-3 px-3 py-1 border-b shrink-0"
+        style={{ background: 'var(--theme-sidebar)', borderColor: 'var(--theme-border)' }}
+      >
+        <NestMenuBar
+          workspacePath={filePath}
+          onViewChange={(v) => setActiveView(v)}
+        />
+        {activeView && (
+          <button
+            onClick={() => setActiveView(null)}
+            className="text-xs px-2 py-0.5 rounded font-medium hover:bg-white/10"
+            style={{ color: 'var(--theme-accent)' }}
+          >
+            ← Back to Editor
+          </button>
+        )}
+      </div>
+
+      {/* When an inline view is active, render it instead of the
+          TipTap iframe. Inline views are lazy()'d, so the user pays
+          their bundle cost only on first open. */}
+      {activeView && (
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <Suspense
+            fallback={
+              <div
+                className="flex items-center justify-center py-20 gap-3"
+                style={{ color: 'var(--theme-muted)' }}
+              >
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-white/70" />
+                Loading {activeView}…
+              </div>
+            }
+          >
+            <InlineView view={activeView} workspace={workspacePrefix} />
+          </Suspense>
+        </div>
+      )}
+
       {/* The iframe-mounted editor draws its own breadcrumb + title +
           action toolbar (refresh / search / download / overflow). Adding
           another header stripe here stacks two of them and pushes the
           hermes-studio top bar (session timer / branding) off-screen.
           Save status moves to a small floating badge instead. */}
 
-      {saveStatus && !loading && !error && (
+      {!activeView && saveStatus && !loading && !error && (
         <div
           className="absolute top-2 right-3 z-10 px-2 py-0.5 rounded text-[11px] font-medium pointer-events-none"
           style={{
@@ -180,7 +244,7 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
         </div>
       )}
 
-      {loading && (
+      {!activeView && loading && (
         <div
           className="flex items-center justify-center flex-1 gap-3"
           style={{ color: 'var(--theme-muted)' }}
@@ -190,7 +254,7 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
         </div>
       )}
 
-      {error && (
+      {!activeView && error && (
         <div className="flex items-center justify-center flex-1">
           <div
             className="text-sm px-4 py-3 rounded-xl"
@@ -201,7 +265,7 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
         </div>
       )}
 
-      {doc && !loading && !error && (
+      {!activeView && doc && !loading && !error && (
         <div className="flex-1 min-h-0">
           <SylangEditor
             document={doc}
@@ -570,6 +634,41 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
           />
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * InlineView — single switch routing NestMenuBar's view keys to the
+ * concrete view component. Kept as a thin switch so adding Coverage,
+ * Traceability, etc. is a one-line change once their components land.
+ *
+ * `iso26262` and `aspice` are intentionally placeholders — sylang-hermes
+ * doesn't implement them either; we keep the menu entries so the shape
+ * matches and add real impls when the analyzer logic lands in sylang-core.
+ */
+function InlineView({ view, workspace }: { view: string; workspace: string }) {
+  switch (view) {
+    case 'fmea':
+      return <FmeaView workspace={workspace} />
+    case 'iso26262':
+    case 'aspice':
+      return <ComingSoon view={view} />
+    default:
+      return <ComingSoon view={view} />
+  }
+}
+
+function ComingSoon({ view }: { view: string }) {
+  return (
+    <div
+      className="flex flex-col items-center justify-center gap-3 py-20 text-center"
+      style={{ color: 'var(--theme-muted)' }}
+    >
+      <div className="text-base font-medium" style={{ color: 'var(--theme-text)' }}>
+        {view} — coming soon
+      </div>
+      <div className="text-sm">This view isn't ported into hermes-studio-sylang yet.</div>
     </div>
   )
 }

@@ -23,7 +23,8 @@
     "check": "prettier --write . && eslint --fix",
     "sync:editor:sylang": "rm -rf public/sylang-editor && mkdir -p public/sylang-editor && cp -R ../sylang-core/packages/web-editor/dist-web/* public/sylang-editor/",
     "sync:editor:diagrams": "rm -rf public/sylang-diagrams && mkdir -p public/sylang-diagrams && cp -R ../sylang-core/packages/web-diagrams/dist-web/* public/sylang-diagrams/",
-    "sync:editors": "pnpm sync:editor:sylang && pnpm sync:editor:diagrams"
+    "sync:editor:fmea": "rm -rf public/sylang-fmea && mkdir -p public/sylang-fmea && cp -R ../sylang-core/packages/fmea-view/dist-web/* public/sylang-fmea/",
+    "sync:editors": "pnpm sync:editor:sylang && pnpm sync:editor:diagrams && pnpm sync:editor:fmea"
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",
