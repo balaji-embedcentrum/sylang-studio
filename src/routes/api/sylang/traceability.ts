@@ -5,14 +5,14 @@
  * every relationship as an edge — for the SigmaGraphTraversal renderer.
  *
  * Backed by `WebDiagramTransformer.transformToGraphTraversal()` from
- * `@sylang-core/diagrams`, sourced from the host's shared
+ * `@sylang/diagrams`, sourced from the host's shared
  * `ServerSymbolManager` cache (same cache diagrams, spec-dash, FMEA and
  * coverage all read from), so the graph stays in lockstep with edits.
  */
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { WebDiagramTransformer } from '@sylang-core/diagrams'
-import type { ISylangLogger } from '@sylang-core/core'
+import { WebDiagramTransformer } from '@sylang/diagrams'
+import type { ISylangLogger } from '@sylang/core'
 import { getAuthUser } from '../../../server/supabase-auth'
 import { getAgentConfig } from '../../../server/gateway-capabilities'
 import { getWorkspaceManager } from '../../../sylang/symbolManager/workspaceSymbolCache'

@@ -3,15 +3,15 @@
  *
  * Body: { filePath: string, diagramType: string, focusIdentifier?: string }
  *
- * Thin wrapper around @sylang-core/diagrams' WebDiagramTransformer. The full
+ * Thin wrapper around @sylang/diagrams' WebDiagramTransformer. The full
  * cross-file symbol graph is supplied by the cached server-side
  * SylangSymbolManagerCore (see workspaceSymbolCache.ts), so the response
  * matches the diagram data the VSCode extension would produce locally.
  */
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { WebDiagramTransformer, DiagramType } from '@sylang-core/diagrams'
-import type { ISylangLogger } from '@sylang-core/core'
+import { WebDiagramTransformer, DiagramType } from '@sylang/diagrams'
+import type { ISylangLogger } from '@sylang/core'
 import { getAuthUser } from '../../../server/supabase-auth'
 import { getAgentConfig } from '../../../server/gateway-capabilities'
 import { getWorkspaceManager } from '../../../sylang/symbolManager/workspaceSymbolCache'

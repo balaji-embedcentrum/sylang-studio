@@ -9,7 +9,7 @@ import { json } from '@tanstack/react-start'
 import { getAuthUser } from '../../../server/supabase-auth'
 import { getAgentConfig } from '../../../server/gateway-capabilities'
 import { getWorkspaceManager } from '../../../sylang/symbolManager/workspaceSymbolCache'
-import type { SylangSymbol } from '@sylang-core/core'
+import type { SylangSymbol } from '@sylang/core'
 import path from 'node:path'
 
 export const Route = createFileRoute('/api/sylang/symbol-details')({

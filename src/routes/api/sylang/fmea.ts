@@ -2,7 +2,7 @@
  * GET /api/sylang/fmea?workspace=userId/owner/repo
  *
  * Returns every symbol in the workspace flattened into the FMEASymbol
- * shape the @sylang-core/fmea-view workbench expects (Map<>→Record<>
+ * shape the @sylang/fmea-view workbench expects (Map<>→Record<>
  * conversion for properties). The iframe receives this list via a
  * `{ type: 'loadSymbols', symbols }` postMessage from
  * src/components/sylang-editor/inline-views/fmea-view.tsx and renders
@@ -18,7 +18,7 @@ import { getAuthUser } from '../../../server/supabase-auth'
 import { getAgentConfig } from '../../../server/gateway-capabilities'
 import { getWorkspaceManager } from '../../../sylang/symbolManager/workspaceSymbolCache'
 
-// FMEASymbol shape — must match @sylang-core/fmea-view's `FMEASymbol`
+// FMEASymbol shape — must match @sylang/fmea-view's `FMEASymbol`
 // type at runtime. We don't import from the package so the route stays
 // usable even before the iframe bundle is built.
 interface FMEASymbol {

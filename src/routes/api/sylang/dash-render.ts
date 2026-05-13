@@ -3,7 +3,7 @@
  *
  * Body: { filePath: string }
  *
- * Parses the requested `.dash` file with `@sylang-core/spec-dash`'s
+ * Parses the requested `.dash` file with `@sylang/spec-dash`'s
  * DashParser and renders it to a self-contained HTML string (with
  * inline Chart.js) via WebDashRenderer. Mirrors `/api/sylang/spec-render`
  * but skips the spec-side composition step — a `.dash` file is rendered
@@ -15,7 +15,7 @@ import {
   DashParser,
   WebDashRenderer,
   WebDataFetcher,
-} from '@sylang-core/spec-dash'
+} from '@sylang/spec-dash'
 import { getAuthUser } from '../../../server/supabase-auth'
 import { getAgentConfig } from '../../../server/gateway-capabilities'
 import { getWorkspaceManager } from '../../../sylang/symbolManager/workspaceSymbolCache'

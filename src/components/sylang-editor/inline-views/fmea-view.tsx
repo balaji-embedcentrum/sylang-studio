@@ -1,7 +1,7 @@
 /**
  * FmeaView — embeds the FMEA workbench as an iframe pointing at
  * /sylang-fmea/main.html (the Vite-built bundle from
- * @sylang-core/fmea-view, synced via `pnpm sync:editor:fmea`).
+ * @sylang/fmea-view, synced via `pnpm sync:editor:fmea`).
  *
  * Why iframe and not library mount:
  *   The FMEA app uses `position: fixed` for its SidePanel + CauseEffectPanel
@@ -21,7 +21,7 @@
  *
  * The `fmeaReady` ↔ `loadSymbols` handshake (and the VSCode API shim that
  * forwards `acquireVsCodeApi().postMessage` to `window.parent`) is set up
- * in @sylang-core/fmea-view/src/main.tsx.
+ * in @sylang/fmea-view/src/main.tsx.
  */
 import { useEffect, useRef, useState } from 'react'
 

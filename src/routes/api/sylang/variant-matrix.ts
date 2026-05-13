@@ -9,7 +9,7 @@
  *       | { action: 'createVariant', fmlPath, variantId, variantName, description, owner }
  *       | { action: 'selectVariantForVcf', vmlPath, variantName }
  *
- * All compute + mutation logic lives in @sylang-core/variant-matrix. This
+ * All compute + mutation logic lives in @sylang/variant-matrix. This
  * route does only auth, agent-URL resolution, file IO (via the agent), and
  * cache invalidation.
  */
@@ -20,7 +20,7 @@ import {
   createVariantVml,
   generateVcfFromVml,
   toggleFeatureInVml,
-} from '@sylang-core/variant-matrix'
+} from '@sylang/variant-matrix'
 import { getAuthUser } from '../../../server/supabase-auth'
 import { getAgentConfig } from '../../../server/gateway-capabilities'
 import {

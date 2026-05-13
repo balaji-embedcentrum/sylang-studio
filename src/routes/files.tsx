@@ -19,7 +19,7 @@ function isJotxFile(name: string): boolean {
   return name.endsWith('.jot')
 }
 
-// .spec / .dash use the @sylang-core/spec-dash server pipeline — text →
+// .spec / .dash use the @sylang/spec-dash server pipeline — text →
 // parser → renderer → HTML string → sandboxed iframe. They aren't
 // edited inline (yet); the viewer is read-only HTML for now.
 function isSpecFile(name: string): boolean {

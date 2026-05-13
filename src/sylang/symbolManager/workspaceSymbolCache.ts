@@ -19,9 +19,9 @@ import fs from 'node:fs/promises'
 // Import the REAL core from sylang2.1 — same class used by the VSCode extension.
 // configManager.ts / configParser.ts have been patched to use ISylangLogger so
 // the vscode dep is gone from this import chain.
-import { SylangSymbolManagerCore } from '@sylang-core/core'
-import type { ISylangLogger } from '@sylang-core/core'
-import type { FileOps } from '@sylang-core/core'
+import { SylangSymbolManagerCore } from '@sylang/core'
+import type { ISylangLogger } from '@sylang/core'
+import type { FileOps } from '@sylang/core'
 
 const WORKSPACE_ROOT = (
   process.env.HERMES_WORKSPACE_DIR || path.join(os.homedir(), '.hermes')
@@ -224,7 +224,7 @@ export class ServerSymbolManager extends SylangSymbolManagerCore {
    */
   resolveAllImports(): void {
     // Build a lookup: headerName → DocumentSymbols for fast matching
-    const headerIndex = new Map<string, import('@sylang-core/core').DocumentSymbols>()
+    const headerIndex = new Map<string, import('@sylang/core').DocumentSymbols>()
     for (const doc of this.documents.values()) {
       if (doc.headerSymbol) {
         // Index by name (primary key for `use` resolution)

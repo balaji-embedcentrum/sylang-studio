@@ -1,7 +1,7 @@
 /**
  * TraceabilityView — renders the workspace-wide graph (every symbol + every
  * relationship) using the `SigmaGraphTraversal` component from
- * `@sylang-core/web-diagrams`'s focused library entry. Mounted inline (no
+ * `@sylang/web-diagrams`'s focused library entry. Mounted inline (no
  * iframe) since the component is pure SVG/D3 + inline styles, with no
  * `position: fixed` panels or global CSS that could leak into the host.
  *
@@ -14,12 +14,12 @@
  * coverage, FMEA, and spec-dash, so the graph reflects current edits.
  */
 import { Suspense, lazy, useEffect, useState } from 'react'
-import type { GraphTraversalData } from '@sylang-core/web-diagrams'
+import type { GraphTraversalData } from '@sylang/web-diagrams'
 
 // Lazy-load the renderer — it pulls in d3 (~80 KB) which we only want
 // to fetch when the user actually opens the view.
 const SigmaGraphTraversal = lazy(() =>
-  import('@sylang-core/web-diagrams').then((m) => ({ default: m.SigmaGraphTraversal })),
+  import('@sylang/web-diagrams').then((m) => ({ default: m.SigmaGraphTraversal })),
 )
 
 export function TraceabilityView({ workspace }: { workspace: string }) {

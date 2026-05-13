@@ -2,7 +2,7 @@
  * DashViewer — renders a `.dash` file as a sandboxed HTML dashboard.
  *
  * Server pipeline (`/api/sylang/dash-render`):
- *   dash text → @sylang-core/spec-dash DashParser → WebDashRenderer → HTML string
+ *   dash text → @sylang/spec-dash DashParser → WebDashRenderer → HTML string
  *   (with inline Chart.js for metric/chart widgets)
  *
  * Same iframe-srcDoc + sandbox pattern as SpecViewer — the rendered

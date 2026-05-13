@@ -3,7 +3,7 @@
  *
  * Body: { filePath: string }
  *
- * Parses the requested `.spec` file with `@sylang-core/spec-dash`'s
+ * Parses the requested `.spec` file with `@sylang/spec-dash`'s
  * SpecParser and renders it to a self-contained HTML string via
  * WebSpecRenderer. The host's cached `ServerSymbolManager` acts as the
  * `SpecDashDataProvider` so the renderer can resolve cross-file refs
@@ -21,7 +21,7 @@ import {
   WebSpecRenderer,
   WebDataFetcher,
   WebDashRenderer,
-} from '@sylang-core/spec-dash'
+} from '@sylang/spec-dash'
 import { getAuthUser } from '../../../server/supabase-auth'
 import { getAgentConfig } from '../../../server/gateway-capabilities'
 import { getWorkspaceManager } from '../../../sylang/symbolManager/workspaceSymbolCache'

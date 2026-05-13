@@ -1,7 +1,7 @@
 /**
- * SylangFileEditor — renders Sylang DSL files via @sylang-core/react.
+ * SylangFileEditor — renders Sylang DSL files via @sylang/react.
  *
- * Architecture: the actual TipTap editor lives in @sylang-core/web-editor and
+ * Architecture: the actual TipTap editor lives in @sylang/web-editor and
  * runs inside an <iframe> served from public/sylang-editor/main.html. This
  * component is the host bridge — it reads the file, parses it to a
  * SylangTiptapDocument, hands the doc off to <SylangEditor />, and saves the
@@ -16,7 +16,7 @@ import {
   serializeToDSL,
   isSylangFile,
   type SylangTiptapDocument,
-} from '@sylang-core/react'
+} from '@sylang/react'
 import { NestMenuBar } from './nest-menu-bar'
 
 // Inline views are lazy-loaded to keep the initial editor bundle small.

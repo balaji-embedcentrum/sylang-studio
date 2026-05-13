@@ -2,7 +2,7 @@
  * SpecViewer — renders a `.spec` file as a sandboxed HTML page.
  *
  * Server pipeline (`/api/sylang/spec-render`):
- *   spec text → @sylang-core/spec-dash SpecParser → WebSpecRenderer → HTML string
+ *   spec text → @sylang/spec-dash SpecParser → WebSpecRenderer → HTML string
  *
  * That HTML (with inline CSS + Chart.js loaded from CDN) is dropped into
  * an iframe via `srcDoc`. The iframe is sandboxed with `allow-scripts`

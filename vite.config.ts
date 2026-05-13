@@ -386,10 +386,10 @@ const config = defineConfig(({ mode, command }) => {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
-      // pnpm-linked @sylang-core/* packages install their own node_modules
+      // pnpm-linked @sylang/* packages install their own node_modules
       // inside sylang-core's workspace (separate lockfile, no cross-workspace
       // dedup). Without dedupe, @jotx-labs/editor — reached via
-      // @sylang-core/jot-editor — would resolve TipTap + React from
+      // @sylang/jot-editor — would resolve TipTap + React from
       // sylang-core's tree while the host renders against its own copies.
       // Two TipTap instances on the same page → ProseMirror's instanceof
       // checks fail → "[tiptap error]: editor view is not available".
@@ -397,7 +397,7 @@ const config = defineConfig(({ mode, command }) => {
       // To make dedupe work we keep @jotx-labs/* and the editor's @tiptap/*
       // deps as direct dependencies in this project's package.json (they're
       // imported transitively but pnpm needs them at the host level to dedupe
-      // them). Pattern: @sylang-core/jot-editor provides the React component
+      // them). Pattern: @sylang/jot-editor provides the React component
       // boundary; the host owns the heavy deps. Same shape as
       // @hugeicons/react + @hugeicons/core-free-icons.
       dedupe: ['react', 'react-dom', 'react/jsx-runtime'],

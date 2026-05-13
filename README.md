@@ -61,7 +61,7 @@ sylang-studio (this repo)
   └── packages/registry       ← File-type → renderer mapping
 ```
 
-Each `@sylang-core/*` package is consumed via `link:../sylang-core/packages/*`
+Each `@sylang/*` package is consumed via `link:../sylang/packages/*`
 in `package.json` for fast local iteration. Production builds the static
 iframe bundles into `public/sylang-{editor,diagrams,fmea}/` via the
 `sync:editor:*` scripts.
@@ -90,9 +90,9 @@ pnpm dev
 ### Sync the iframe bundles after editing @sylang-core sources
 
 ```bash
-pnpm sync:editor:sylang     # @sylang-core/web-editor → public/sylang-editor/
-pnpm sync:editor:diagrams   # @sylang-core/web-diagrams → public/sylang-diagrams/
-pnpm sync:editor:fmea       # @sylang-core/fmea-view → public/sylang-fmea/
+pnpm sync:editor:sylang     # @sylang/web-editor → public/sylang-editor/
+pnpm sync:editor:diagrams   # @sylang/web-diagrams → public/sylang-diagrams/
+pnpm sync:editor:fmea       # @sylang/fmea-view → public/sylang-fmea/
 pnpm sync:editors           # all three at once
 ```
 
@@ -146,7 +146,7 @@ the 8-theme system — comes from
 [Hermes Workspace](https://github.com/outsourc-e/hermes-agent) by
 [Eric (outsourc-e)](https://github.com/outsourc-e), MIT-licensed. Thanks Eric.
 
-The Sylang DSL + every `@sylang-core/*` package, the FMEA workbench,
+The Sylang DSL + every `@sylang/*` package, the FMEA workbench,
 traceability/coverage analysis, and the MBSE-specific editors are
 developed alongside this repo. See [CREDITS.md](CREDITS.md) for detail.
 

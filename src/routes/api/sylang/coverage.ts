@@ -5,7 +5,7 @@
  * five states (`isolated` / `orphan` / `sink` / `connected` / `broken`)
  * with per-symbol outgoing + incoming relationship detail.
  *
- * Backed by `TraceabilityMatrixBuilder` from `@sylang-core/traceability`
+ * Backed by `TraceabilityMatrixBuilder` from `@sylang/traceability`
  * (the same headless builder that powers the matrix view), reading from
  * the host's shared `ServerSymbolManager` cache — so coverage stays in
  * lockstep with diagrams, spec-dash, and FMEA.
@@ -15,8 +15,8 @@
  */
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { TraceabilityMatrixBuilder } from '@sylang-core/traceability'
-import type { ISylangLogger } from '@sylang-core/core'
+import { TraceabilityMatrixBuilder } from '@sylang/traceability'
+import type { ISylangLogger } from '@sylang/core'
 import { getAuthUser } from '../../../server/supabase-auth'
 import { getAgentConfig } from '../../../server/gateway-capabilities'
 import { getWorkspaceManager } from '../../../sylang/symbolManager/workspaceSymbolCache'
