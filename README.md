@@ -1,9 +1,16 @@
 # Sylang Studio
 
-**A browser IDE for Model-Based Systems Engineering — Sylang DSL, AIAG/VDA FMEA, traceability, and an AI agent that understands every file in your project.**
+**The "Sylang Playground" — a browser IDE for Model-Based Systems Engineering. Sylang DSL, AIAG/VDA FMEA, traceability, and an AI agent that understands every file in your project.**
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen.svg)](https://nodejs.org/)
+
+> Marketing / public landing page lives in
+> [sylang-visual-forge](https://github.com/balaji-embedcentrum/sylang-visual-forge).
+> The "Sylang Playground" button there links to `GET /api/auth/github` here,
+> which kicks off GitHub OAuth via Supabase and lands authenticated users
+> in the editor. `/` in this repo is a minimal sign-in gateway, not a
+> marketing surface.
 
 Sign in with GitHub, open any Sylang project, and edit `.req`, `.fun`, `.blk`,
 `.fml`, `.vml`, `.flr`, `.fta`, `.haz`, `.tst`, `.ifc`, `.smd`, `.ucd`, `.spec`,
