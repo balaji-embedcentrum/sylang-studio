@@ -55,7 +55,7 @@ function TermsPage() {
           >
             <img
               src="/hermes-crest.svg"
-              alt="Hermes Studio"
+              alt="Sylang Studio"
               style={{ width: 26, height: 26 }}
             />
             <span
@@ -65,7 +65,7 @@ function TermsPage() {
                 letterSpacing: '-0.03em',
               }}
             >
-              Hermes Studio
+              Sylang Studio
             </span>
           </Link>
         </div>
@@ -113,7 +113,7 @@ function TermsPage() {
               marginBottom: 0,
             }}
           >
-            Hermes Studio is an open playground for trying AI coding agents.
+            Sylang Studio is an open playground for trying AI coding agents.
             It is provided <strong>AS IS</strong>, without warranties of any
             kind. By signing in, you acknowledge that this is experimental
             software and you use it at your own risk.

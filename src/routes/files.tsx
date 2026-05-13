@@ -256,7 +256,7 @@ function FilesRoute() {
             className="flex items-center gap-3 px-4 py-1 border-b shrink-0"
             style={{ background: 'var(--theme-sidebar)', borderColor: 'var(--theme-border)' }}
           >
-            {/* Click "Hermes Studio" to drop both the selected file and
+            {/* Click "Sylang Studio" to drop both the selected file and
                 any active inline view — returns the user to
                 WorkspaceHome from anywhere in the editor pane. */}
             <button
@@ -269,7 +269,7 @@ function FilesRoute() {
               style={{ color: 'var(--theme-accent)' }}
               title="Back to workspace home"
             >
-              Hermes Studio
+              Sylang Studio
             </button>
             <div className="flex-1" />
             <SessionTimer />

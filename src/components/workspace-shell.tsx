@@ -288,7 +288,7 @@ export function WorkspaceShell() {
                 className="text-[13px] font-medium select-none"
                 style={{ color: 'var(--theme-accent, #B98A44)' }}
               >
-                Hermes Studio
+                Sylang Studio
               </span>
             </div>
             {/* Right spacer to balance */}
