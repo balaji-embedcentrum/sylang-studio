@@ -72,6 +72,9 @@ importers:
       '@sylang/diagrams':
         specifier: ^0.1.0
         version: 0.1.0
+      '@sylang/jot-editor':
+        specifier: ^0.1.0
+        version: 0.1.0(obvrfsg44awie723lnascblcqy)
       '@sylang/react':
         specifier: ^0.1.0
         version: 0.1.0(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))(@tiptap/pm@3.23.4)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -2042,6 +2045,12 @@ packages:
 
   '@sylang/fta@0.1.0':
     resolution: {integrity: sha512-TBJWpoU5M3KIxXGHHp1B1RjwndUm1ABq5bpg8YmxXw28tnoNNr0TuVDcpxumoMVkboLTSOaU8d93Otz2biMc0A==}
+
+  '@sylang/jot-editor@0.1.0':
+    resolution: {integrity: sha512-rTFy2XmcFwt76uzD4gBmqQd47vrt3Blx9/ALcH50Wmstw92V8Q4YQjbmouOZHQkwajVEiOFsWOycvRrLuOsS/w==}
+    peerDependencies:
+      react: '>=18'
+      react-dom: '>=18'
 
   '@sylang/react@0.1.0':
     resolution: {integrity: sha512-7CanfB8M2eP3C0PzumIWNj7mNYPdI6wyCPiEoeXhe+Z4kHqnQ9HlNheI7qV9OagkQQ6/hjmFbxnAOFU6D6wMiA==}
@@ -8253,6 +8262,38 @@ snapshots:
     dependencies:
       '@sylang/core': 0.1.0
 
+  '@sylang/jot-editor@0.1.0(obvrfsg44awie723lnascblcqy)':
+    dependencies:
+      '@jotx-labs/adapters': 2.4.253(vscode@1.1.37)
+      '@jotx-labs/core': 2.4.253
+      '@jotx-labs/editor': 2.4.253(sjsiunxphrkuph52vyhsf6kmbm)
+      '@jotx-labs/react-renderer': 2.4.253(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))(@tiptap/react@2.27.2(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))(@tiptap/pm@3.23.4)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(@tiptap/starter-kit@2.27.2)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@jotx-labs/registry': 2.4.253
+      '@jotx-labs/standard-lib': 2.4.253
+      html2canvas: 1.4.1
+      jspdf: 4.2.1
+      react: 19.2.6
+      react-dom: 19.2.6(react@19.2.6)
+    transitivePeerDependencies:
+      - '@tiptap/core'
+      - '@tiptap/extension-color'
+      - '@tiptap/extension-heading'
+      - '@tiptap/extension-highlight'
+      - '@tiptap/extension-image'
+      - '@tiptap/extension-link'
+      - '@tiptap/extension-placeholder'
+      - '@tiptap/extension-table'
+      - '@tiptap/extension-table-cell'
+      - '@tiptap/extension-table-header'
+      - '@tiptap/extension-table-row'
+      - '@tiptap/extension-task-item'
+      - '@tiptap/extension-task-list'
+      - '@tiptap/extension-text-style'
+      - '@tiptap/react'
+      - '@tiptap/starter-kit'
+      - d3
+      - vscode
+
   '@sylang/react@0.1.0(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))(@tiptap/pm@3.23.4)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
       '@sylang/core': 0.1.0
@@ -10391,7 +10432,7 @@ snapshots:
       fs.realpath: 1.0.0
       inflight: 1.0.6
       inherits: 2.0.4
-      minimatch: 3.0.4
+      minimatch: 3.1.5
       once: 1.4.0
       path-is-absolute: 1.0.1
 

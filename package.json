@@ -43,6 +43,7 @@
     "@sylang/code-editor": "^0.1.0",
     "@sylang/core": "^0.1.0",
     "@sylang/diagrams": "^0.1.0",
+    "@sylang/jot-editor": "^0.1.0",
     "@sylang/react": "^0.1.0",
     "@sylang/registry": "^0.1.0",
     "@sylang/spec-dash": "^0.1.0",
