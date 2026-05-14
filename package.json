@@ -112,5 +112,11 @@
     "vite": "^7.1.7",
     "vitest": "^3.0.5",
     "web-vitals": "^5.1.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "@tiptap/core": "^3.23.1",
+      "@tiptap/pm": "^3.23.1"
+    }
   }
 }
