@@ -8,6 +8,11 @@ overrides:
   '@tiptap/core': ^3.23.1
   '@tiptap/pm': ^3.23.1
 
+patchedDependencies:
+  '@jotx-labs/editor':
+    hash: e2tuzzjyevghxnhifgeb4gr7za
+    path: patches/@jotx-labs__editor.patch
+
 importers:
 
   .:
@@ -41,7 +46,7 @@ importers:
         version: 2.4.253
       '@jotx-labs/editor':
         specifier: ^2.4.253
-        version: 2.4.253(sjsiunxphrkuph52vyhsf6kmbm)
+        version: 2.4.253(patch_hash=e2tuzzjyevghxnhifgeb4gr7za)(sjsiunxphrkuph52vyhsf6kmbm)
       '@jotx-labs/react-renderer':
         specifier: ^2.4.253
         version: 2.4.253(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))(@tiptap/react@2.27.2(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))(@tiptap/pm@3.23.4)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(@tiptap/starter-kit@2.27.2)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -6806,7 +6811,7 @@ snapshots:
       '@jotx-labs/registry': 2.4.253
       marked: 17.0.6
 
-  '@jotx-labs/editor@2.4.253(sjsiunxphrkuph52vyhsf6kmbm)':
+  '@jotx-labs/editor@2.4.253(patch_hash=e2tuzzjyevghxnhifgeb4gr7za)(sjsiunxphrkuph52vyhsf6kmbm)':
     dependencies:
       '@jotx-labs/core': 2.4.253
       '@jotx-labs/registry': 2.4.253
@@ -8266,7 +8271,7 @@ snapshots:
     dependencies:
       '@jotx-labs/adapters': 2.4.253(vscode@1.1.37)
       '@jotx-labs/core': 2.4.253
-      '@jotx-labs/editor': 2.4.253(sjsiunxphrkuph52vyhsf6kmbm)
+      '@jotx-labs/editor': 2.4.253(patch_hash=e2tuzzjyevghxnhifgeb4gr7za)(sjsiunxphrkuph52vyhsf6kmbm)
       '@jotx-labs/react-renderer': 2.4.253(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))(@tiptap/react@2.27.2(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))(@tiptap/pm@3.23.4)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(@tiptap/starter-kit@2.27.2)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@jotx-labs/registry': 2.4.253
       '@jotx-labs/standard-lib': 2.4.253

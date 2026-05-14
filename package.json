@@ -40,6 +40,10 @@
     "@jotx-labs/react-renderer": "^2.4.253",
     "@jotx-labs/registry": "^2.4.253",
     "@jotx-labs/standard-lib": "^2.4.253",
+    "@lobehub/icons": "^5.0.1",
+    "@lobehub/icons-static-png": "^1.83.0",
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.103.0",
     "@sylang/code-editor": "^0.1.0",
     "@sylang/core": "^0.1.0",
     "@sylang/diagrams": "^0.1.0",
@@ -47,15 +51,11 @@
     "@sylang/react": "^0.1.0",
     "@sylang/registry": "^0.1.0",
     "@sylang/spec-dash": "^0.1.0",
-    "@sylang/traceability": "^0.1.0",
-    "@sylang/web-diagrams": "^0.1.0",
     "@sylang/tiptap": "^0.1.0",
+    "@sylang/traceability": "^0.1.0",
     "@sylang/variant-matrix": "^0.1.0",
+    "@sylang/web-diagrams": "^0.1.0",
     "@sylang/web-editor": "^0.1.0",
-    "@lobehub/icons": "^5.0.1",
-    "@lobehub/icons-static-png": "^1.83.0",
-    "@supabase/ssr": "^0.10.2",
-    "@supabase/supabase-js": "^2.103.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-query": "^5.84.1",
     "@tanstack/react-router": "^1.132.0",
@@ -118,6 +118,9 @@
     "overrides": {
       "@tiptap/core": "^3.23.1",
       "@tiptap/pm": "^3.23.1"
+    },
+    "patchedDependencies": {
+      "@jotx-labs/editor": "patches/@jotx-labs__editor.patch"
     }
   }
 }
