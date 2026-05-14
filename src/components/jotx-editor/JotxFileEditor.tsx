@@ -20,6 +20,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { JotxEditor } from '@sylang/jot-editor'
 import '@sylang/jot-editor/styles.css'
+// Full 6354-line Notion-style styling (tables, headings, lists, callouts,
+// etc.) lifted from sylang2.1/src/jotx — kept host-local because the npm
+// `@sylang/jot-editor` only ships a minimal layout stub. We should fold
+// this back into the package and republish, but the cosmetic version
+// bump is a separate task; for now the host imports it directly.
+import './jotx-editor.css'
 import { useWorkspaceStore } from '@/stores/workspace-store'
 import { localReadFile, localWriteFile } from '@/lib/local-file-ops'
 
