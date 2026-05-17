@@ -409,8 +409,39 @@ const config = defineConfig(({ mode, command }) => {
         'playwright-extra',
         'puppeteer-extra-plugin-stealth',
       ],
+      // `@sylang/jot-editor` (and its `@jotx-labs/adapters` dep) ship a bare
+      // directory import — `from '@jotx-labs/adapters/dist/editor'` with no
+      // `/index.js`. Node's strict ESM resolver rejects that
+      // (ERR_UNSUPPORTED_DIR_IMPORT) when these are externalized during
+      // `vite dev` SSR, so the JotxFileEditor module fails to evaluate and
+      // the `.jot` view renders `undefined` ("Failed to Load Files"). The
+      // production build already bundles them (Rollup resolves the dir
+      // import → its index.js), which is why prod works. Bundling them for
+      // SSR too applies the same lenient resolution in dev.
+      noExternal: [
+        '@sylang/jot-editor',
+        '@jotx-labs/adapters',
+        '@jotx-labs/editor',
+      ],
+      // `@jotx-labs/adapters/dist/editor/index.js` is CommonJS (`exports`),
+      // which Vite's SSR ESM module-runner can't execute raw
+      // ("ReferenceError: exports is not defined"). esbuild-prebundle the
+      // jot packages for SSR so CJS→ESM interop is applied (the prod Rollup
+      // build does this via @rollup/plugin-commonjs — hence prod works).
+      optimizeDeps: {
+        include: [
+          '@sylang/jot-editor',
+          '@jotx-labs/adapters',
+          '@jotx-labs/editor',
+        ],
+      },
     },
     optimizeDeps: {
+      include: [
+        '@sylang/jot-editor',
+        '@jotx-labs/adapters',
+        '@jotx-labs/editor',
+      ],
       exclude: [
         'playwright',
         'playwright-core',
