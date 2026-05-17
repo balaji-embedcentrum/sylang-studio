@@ -143,3 +143,4 @@ workspace-final-markdown-review.md
 # at install/prebuild (postinstall + prebuild → sync:editors:npm). Not tracked.
 public/sylang-editor
 public/sylang-diagrams
+public/sylang-fmea

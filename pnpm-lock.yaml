@@ -77,6 +77,9 @@ importers:
       '@sylang/diagrams':
         specifier: ^0.1.0
         version: 0.1.0
+      '@sylang/fmea-view':
+        specifier: ^0.1.0
+        version: 0.1.0
       '@sylang/jot-editor':
         specifier: ^0.1.0
         version: 0.1.0(obvrfsg44awie723lnascblcqy)
@@ -2044,6 +2047,9 @@ packages:
 
   '@sylang/diagrams@0.1.0':
     resolution: {integrity: sha512-Hxl5hITJ/pcu9JJzGhPlYQ1WYEJvKvuOK6u+WSHz+w0GEH7tb8awp9Sb9SpANloDlk/liaxRU9Gef0cQ1c1WBg==}
+
+  '@sylang/fmea-view@0.1.0':
+    resolution: {integrity: sha512-A2ATis/x8cMqeZYe+OZvC2OtV5teBjvWBt2Ex5Zdkdd63NLSdGal2uYrbat78jPl0fdbADB9c758UCHiRc6IOg==}
 
   '@sylang/fmea@0.1.0':
     resolution: {integrity: sha512-6kRE1QazSU3N6vtagR7/2zZxQT9cYjHu83QFU9DN3b9q2K7jmyFJXYHJuCwypvCokfy+FxPELHw/bkEHOw/dIA==}
@@ -8258,6 +8264,12 @@ snapshots:
     dependencies:
       '@sylang/core': 0.1.0
       '@sylang/fta': 0.1.0
+
+  '@sylang/fmea-view@0.1.0':
+    dependencies:
+      d3: 7.9.0
+      react: 19.2.6
+      react-dom: 19.2.6(react@19.2.6)
 
   '@sylang/fmea@0.1.0':
     dependencies:
