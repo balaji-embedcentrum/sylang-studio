@@ -1103,6 +1103,21 @@ export function ChatScreen({
     activeRealtimeStreamingText,
     activeIsRealtimeStreaming,
   )
+  // Anti-flicker: the smoothed text can momentarily go empty mid-stream
+  // (between chunks / tool phases), which blanks the assistant bubble then
+  // snaps back. Hold the last non-empty smoothed value while streaming so the
+  // text never flashes blank; reset once streaming ends.
+  const stickyStreamingTextRef = useRef('')
+  if (activeIsRealtimeStreaming) {
+    if (smoothActiveStreamingText) {
+      stickyStreamingTextRef.current = smoothActiveStreamingText
+    }
+  } else {
+    stickyStreamingTextRef.current = ''
+  }
+  const stableActiveStreamingText = activeIsRealtimeStreaming
+    ? smoothActiveStreamingText || stickyStreamingTextRef.current
+    : ''
 
   // Use realtime-merged messages for display (SSE + history)
   // Re-apply display filter to realtime messages
@@ -2607,7 +2622,7 @@ export function ChatScreen({
               isStreaming={derivedStreamingInfo.isStreaming}
               streamingMessageId={derivedStreamingInfo.streamingMessageId}
               streamingText={
-                smoothActiveStreamingText ||
+                stableActiveStreamingText ||
                 completedStreamingText.current ||
                 undefined
               }
