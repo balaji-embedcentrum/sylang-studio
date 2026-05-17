@@ -113,7 +113,7 @@ export function JotxFileEditor({ filePath, fileName }: Props) {
   )
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="jotx-host flex flex-col h-full min-h-0">
       {/* Header */}
       <div
         className="flex items-center gap-3 px-4 py-1.5 border-b shrink-0"
