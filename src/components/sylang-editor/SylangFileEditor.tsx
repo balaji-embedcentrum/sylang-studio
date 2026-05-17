@@ -88,6 +88,7 @@ function useLiveEditorThemeMode(): 'dark' | 'light' {
 export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate }: Props) {
   const fileExtension = getFileExtension(fileName)
   const editorThemeMode = useLiveEditorThemeMode()
+  const [editorReady, setEditorReady] = useState(false)
   const [doc, setDoc] = useState<SylangTiptapDocument | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -100,12 +101,29 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
   const pendingSave = useRef<ReturnType<typeof setTimeout> | null>(null)
   const originalContentRef = useRef<string>('')
   const postRef = useRef<((msg: unknown) => void) | null>(null)
+  // Latest resolved mode, read inside onReady (which fires on every iframe
+  // load/reload) without capturing a stale closure value.
+  const themeModeRef = useRef(editorThemeMode)
+  themeModeRef.current = editorThemeMode
   const localAgentUrl = useWorkspaceStore((s) => s.localHermesUrl)
   const activeWorkspacePath = useWorkspaceStore((s) => s.activeWorkspacePath)
   const onNavigateRef = useRef(onNavigate)
   useEffect(() => {
     onNavigateRef.current = onNavigate
   }, [onNavigate])
+
+  // Force the iframe's light/dark mode via the editor bundle's own
+  // `setTheme` postMessage channel. The bundle reads the URL `?theme=`
+  // ONLY once at startup and otherwise falls back to matchMedia (which
+  // defaults to *dark*). Behind a CDN / with a cached iframe that URL
+  // path is unreliable — which is why .vml/.vcf kept rendering dark even
+  // with the correct theme prop. `setTheme` does a reliable
+  // remove-both + add-correct on the live iframe, so drive it explicitly
+  // once the editor is ready and again on every host theme change.
+  useEffect(() => {
+    if (!editorReady) return
+    postRef.current?.({ type: 'setTheme', theme: editorThemeMode })
+  }, [editorReady, editorThemeMode])
 
   // Workspace prefix is the first three path segments: <userId>/<login>/<repo>.
   // Used to scope iframe-side requests (symbol lookups etc.) to the right
@@ -315,6 +333,11 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
             colorPalette="orange"
             onReady={(post) => {
               postRef.current = post
+              // Push the correct theme the moment the iframe is ready —
+              // covers the initial load and every reload (the bundle
+              // re-runs its dark-defaulting matchMedia fallback on each).
+              post({ type: 'setTheme', theme: themeModeRef.current })
+              setEditorReady(true)
             }}
             onMessage={(raw) => {
               const msg = raw as
