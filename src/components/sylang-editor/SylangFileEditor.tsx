@@ -101,6 +101,7 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
   const pendingSave = useRef<ReturnType<typeof setTimeout> | null>(null)
   const originalContentRef = useRef<string>('')
   const postRef = useRef<((msg: unknown) => void) | null>(null)
+  const editorContainerRef = useRef<HTMLDivElement | null>(null)
   // Latest resolved mode, read inside onReady (which fires on every iframe
   // load/reload) without capturing a stale closure value.
   const themeModeRef = useRef(editorThemeMode)
@@ -124,6 +125,114 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
     if (!editorReady) return
     postRef.current?.({ type: 'setTheme', theme: editorThemeMode })
   }, [editorReady, editorThemeMode])
+
+  // Bulletproof theme enforcement. The editor iframe is SAME-ORIGIN
+  // (/sylang-editor/* on this domain, sandbox allows same-origin), and
+  // every indirect channel proved unreliable in production: the bundle
+  // reads ?theme= once then falls back to matchMedia (defaults to dark),
+  // its CSS has no :root fallback for --vscode-editor-background (so a
+  // wrong/missing body theme class makes the block cards transparent
+  // over a dark backdrop), and postMessage timing behind the CDN didn't
+  // stick. So we reach into the iframe document directly and (a) inject a
+  // :root fallback for the editor-bg/fg vars and (b) keep its
+  // <body class="sylang-theme-*"> in sync with the host — re-asserting
+  // via a MutationObserver if the bundle's own startup flips it back.
+  useEffect(() => {
+    const hostMode = (): 'dark' | 'light' =>
+      document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+
+    let bodyObs: MutationObserver | null = null
+    let watchedBody: HTMLElement | null = null
+
+    const enforce = () => {
+      const iframe =
+        editorContainerRef.current?.querySelector<HTMLIFrameElement>('iframe')
+      if (!iframe) return
+      let idoc: Document | null = null
+      try {
+        idoc = iframe.contentDocument
+      } catch {
+        return // cross-origin (shouldn't happen) — give up silently
+      }
+      if (!idoc || !idoc.documentElement) return
+      const mode = hostMode()
+
+      // (a) :root fallback so the bg vars are ALWAYS defined, even before
+      //     the bundle adds its body theme class.
+      const head = idoc.head || idoc.documentElement
+      let style = idoc.getElementById(
+        '__host_theme_fallback',
+      ) as HTMLStyleElement | null
+      if (!style) {
+        style = idoc.createElement('style')
+        style.id = '__host_theme_fallback'
+        head.appendChild(style)
+      }
+      const bg = mode === 'dark' ? '#1e1e1e' : '#ffffff'
+      const fg = mode === 'dark' ? '#d4d4d4' : '#1f2937'
+      const css = `:root{--vscode-editor-background:${bg};--vscode-editor-foreground:${fg};}`
+      if (style.textContent !== css) style.textContent = css
+
+      // (b) keep the body theme class correct (check-before-write avoids
+      //     observer feedback loops).
+      const body = idoc.body
+      if (body) {
+        const want = `sylang-theme-${mode}`
+        const drop = `sylang-theme-${mode === 'dark' ? 'light' : 'dark'}`
+        if (body.classList.contains(drop)) body.classList.remove(drop)
+        if (!body.classList.contains(want)) body.classList.add(want)
+
+        // Re-assert if the bundle's startup script flips the class back.
+        if (watchedBody !== body) {
+          bodyObs?.disconnect()
+          bodyObs = new MutationObserver(() => {
+            const m = hostMode()
+            const w = `sylang-theme-${m}`
+            const d = `sylang-theme-${m === 'dark' ? 'light' : 'dark'}`
+            if (body.classList.contains(d) || !body.classList.contains(w)) {
+              body.classList.remove(d)
+              body.classList.add(w)
+            }
+          })
+          bodyObs.observe(body, {
+            attributes: true,
+            attributeFilter: ['class'],
+          })
+          watchedBody = body
+        }
+      }
+    }
+
+    // Acquire the iframe (rendered async by <SylangEditor>) and re-enforce
+    // across its load + the bundle's slightly-later startup.
+    let tries = 0
+    const poll = window.setInterval(() => {
+      tries += 1
+      const iframe =
+        editorContainerRef.current?.querySelector<HTMLIFrameElement>('iframe')
+      if (iframe) {
+        enforce()
+        iframe.addEventListener('load', enforce)
+      }
+      if (tries > 40) window.clearInterval(poll) // ~12s safety cap
+    }, 300)
+
+    // Follow host theme switches.
+    const rootObs = new MutationObserver(enforce)
+    rootObs.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'data-theme'],
+    })
+
+    return () => {
+      window.clearInterval(poll)
+      rootObs.disconnect()
+      bodyObs?.disconnect()
+      const iframe =
+        editorContainerRef.current?.querySelector<HTMLIFrameElement>('iframe')
+      iframe?.removeEventListener('load', enforce)
+    }
+  }, [doc])
 
   // Workspace prefix is the first three path segments: <userId>/<login>/<repo>.
   // Used to scope iframe-side requests (symbol lookups etc.) to the right
@@ -320,7 +429,7 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
       )}
 
       {!activeView && doc && !loading && !error && (
-        <div className="flex-1 min-h-0">
+        <div ref={editorContainerRef} className="flex-1 min-h-0">
           <SylangEditor
             document={doc}
             fileExtension={fileExtension}
