@@ -10,7 +10,7 @@ overrides:
 
 patchedDependencies:
   '@jotx-labs/editor':
-    hash: e2tuzzjyevghxnhifgeb4gr7za
+    hash: ak7ipfyjvexo4aqwqy62vdkhua
     path: patches/@jotx-labs__editor.patch
 
 importers:
@@ -46,7 +46,7 @@ importers:
         version: 2.4.253
       '@jotx-labs/editor':
         specifier: ^2.4.253
-        version: 2.4.253(patch_hash=e2tuzzjyevghxnhifgeb4gr7za)(sjsiunxphrkuph52vyhsf6kmbm)
+        version: 2.4.253(patch_hash=ak7ipfyjvexo4aqwqy62vdkhua)(sjsiunxphrkuph52vyhsf6kmbm)
       '@jotx-labs/react-renderer':
         specifier: ^2.4.253
         version: 2.4.253(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))(@tiptap/react@2.27.2(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))(@tiptap/pm@3.23.4)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(@tiptap/starter-kit@2.27.2)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -77,6 +77,9 @@ importers:
       '@sylang/diagrams':
         specifier: ^0.1.0
         version: 0.1.0
+      '@sylang/fmea-view':
+        specifier: ^0.1.0
+        version: 0.1.0
       '@sylang/jot-editor':
         specifier: ^0.1.0
         version: 0.1.0(obvrfsg44awie723lnascblcqy)
@@ -102,8 +105,8 @@ importers:
         specifier: ^0.1.0
         version: 0.1.0(@types/react@19.2.14)(graphology-types@0.24.8)
       '@sylang/web-editor':
-        specifier: ^0.1.0
-        version: 0.1.0(@types/react@19.2.14)(graphology-types@0.24.8)
+        specifier: ^0.1.1
+        version: 0.1.1(@types/react@19.2.14)(graphology-types@0.24.8)
       '@tailwindcss/vite':
         specifier: ^4.1.18
         version: 4.3.0(vite@7.3.3(@types/node@22.19.19)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.9.0))
@@ -2045,6 +2048,9 @@ packages:
   '@sylang/diagrams@0.1.0':
     resolution: {integrity: sha512-Hxl5hITJ/pcu9JJzGhPlYQ1WYEJvKvuOK6u+WSHz+w0GEH7tb8awp9Sb9SpANloDlk/liaxRU9Gef0cQ1c1WBg==}
 
+  '@sylang/fmea-view@0.1.0':
+    resolution: {integrity: sha512-A2ATis/x8cMqeZYe+OZvC2OtV5teBjvWBt2Ex5Zdkdd63NLSdGal2uYrbat78jPl0fdbADB9c758UCHiRc6IOg==}
+
   '@sylang/fmea@0.1.0':
     resolution: {integrity: sha512-6kRE1QazSU3N6vtagR7/2zZxQT9cYjHu83QFU9DN3b9q2K7jmyFJXYHJuCwypvCokfy+FxPELHw/bkEHOw/dIA==}
 
@@ -2084,8 +2090,8 @@ packages:
   '@sylang/web-diagrams@0.1.0':
     resolution: {integrity: sha512-yX6eTUTACDU1eY9gtMfSFwy96cdUc4RIO3kQLEwx1ZNX2qMBzFL2NJ4+3q+T8GTgVfUKjME5N9HkgWDsInN2ng==}
 
-  '@sylang/web-editor@0.1.0':
-    resolution: {integrity: sha512-q0FJ1OoRz8vWbfd6nuins7oWVAn3v5p4dBRJ+QOq7tP+9Q3jdBtPAxI+lazfAzYCWyw9IYaoPJeCJD+0O5bchQ==}
+  '@sylang/web-editor@0.1.1':
+    resolution: {integrity: sha512-lycH/PGcjGbdK9saC8RBp1w+hVOO5XYn8Zb/9qSXADtI73EsvApV+64gHblIHnUbkwbAYfaqcaIko/xuMgILGQ==}
 
   '@tailwindcss/node@4.3.0':
     resolution: {integrity: sha512-aFb4gUhFOgdh9AXo4IzBEOzBkkAxm9VigwDJnMIYv3lcfXCJVesNfbEaBl4BNgVRyid92AmdviqwBUBRKSeY3g==}
@@ -6811,7 +6817,7 @@ snapshots:
       '@jotx-labs/registry': 2.4.253
       marked: 17.0.6
 
-  '@jotx-labs/editor@2.4.253(patch_hash=e2tuzzjyevghxnhifgeb4gr7za)(sjsiunxphrkuph52vyhsf6kmbm)':
+  '@jotx-labs/editor@2.4.253(patch_hash=ak7ipfyjvexo4aqwqy62vdkhua)(sjsiunxphrkuph52vyhsf6kmbm)':
     dependencies:
       '@jotx-labs/core': 2.4.253
       '@jotx-labs/registry': 2.4.253
@@ -8259,6 +8265,12 @@ snapshots:
       '@sylang/core': 0.1.0
       '@sylang/fta': 0.1.0
 
+  '@sylang/fmea-view@0.1.0':
+    dependencies:
+      d3: 7.9.0
+      react: 19.2.6
+      react-dom: 19.2.6(react@19.2.6)
+
   '@sylang/fmea@0.1.0':
     dependencies:
       '@sylang/core': 0.1.0
@@ -8271,7 +8283,7 @@ snapshots:
     dependencies:
       '@jotx-labs/adapters': 2.4.253(vscode@1.1.37)
       '@jotx-labs/core': 2.4.253
-      '@jotx-labs/editor': 2.4.253(patch_hash=e2tuzzjyevghxnhifgeb4gr7za)(sjsiunxphrkuph52vyhsf6kmbm)
+      '@jotx-labs/editor': 2.4.253(patch_hash=ak7ipfyjvexo4aqwqy62vdkhua)(sjsiunxphrkuph52vyhsf6kmbm)
       '@jotx-labs/react-renderer': 2.4.253(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))(@tiptap/react@2.27.2(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))(@tiptap/pm@3.23.4)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(@tiptap/starter-kit@2.27.2)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@jotx-labs/registry': 2.4.253
       '@jotx-labs/standard-lib': 2.4.253
@@ -8350,7 +8362,7 @@ snapshots:
       - '@types/react'
       - graphology-types
 
-  '@sylang/web-editor@0.1.0(@types/react@19.2.14)(graphology-types@0.24.8)':
+  '@sylang/web-editor@0.1.1(@types/react@19.2.14)(graphology-types@0.24.8)':
     dependencies:
       '@sylang/core': 0.1.0
       '@sylang/tiptap': 0.1.0(@tiptap/core@3.23.4(@tiptap/pm@3.23.4))(@tiptap/pm@3.23.4)
