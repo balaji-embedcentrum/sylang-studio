@@ -78,6 +78,7 @@ import { Route as ApiProfilesListRouteImport } from './routes/api/profiles/list'
 import { Route as ApiProfilesDeleteRouteImport } from './routes/api/profiles/delete'
 import { Route as ApiProfilesCreateRouteImport } from './routes/api/profiles/create'
 import { Route as ApiProfilesActivateRouteImport } from './routes/api/profiles/activate'
+import { Route as ApiPlaygroundListRouteImport } from './routes/api/playground/list'
 import { Route as ApiOauthPollTokenRouteImport } from './routes/api/oauth.poll-token'
 import { Route as ApiOauthDeviceCodeRouteImport } from './routes/api/oauth.device-code'
 import { Route as ApiMemoryWriteRouteImport } from './routes/api/memory/write'
@@ -452,6 +453,11 @@ const ApiProfilesActivateRoute = ApiProfilesActivateRouteImport.update({
   path: '/api/profiles/activate',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPlaygroundListRoute = ApiPlaygroundListRouteImport.update({
+  id: '/api/playground/list',
+  path: '/api/playground/list',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiOauthPollTokenRoute = ApiOauthPollTokenRouteImport.update({
   id: '/api/oauth/poll-token',
   path: '/api/oauth/poll-token',
@@ -669,6 +675,7 @@ export interface FileRoutesByFullPath {
   '/api/memory/write': typeof ApiMemoryWriteRoute
   '/api/oauth/device-code': typeof ApiOauthDeviceCodeRoute
   '/api/oauth/poll-token': typeof ApiOauthPollTokenRoute
+  '/api/playground/list': typeof ApiPlaygroundListRoute
   '/api/profiles/activate': typeof ApiProfilesActivateRoute
   '/api/profiles/create': typeof ApiProfilesCreateRoute
   '/api/profiles/delete': typeof ApiProfilesDeleteRoute
@@ -767,6 +774,7 @@ export interface FileRoutesByTo {
   '/api/memory/write': typeof ApiMemoryWriteRoute
   '/api/oauth/device-code': typeof ApiOauthDeviceCodeRoute
   '/api/oauth/poll-token': typeof ApiOauthPollTokenRoute
+  '/api/playground/list': typeof ApiPlaygroundListRoute
   '/api/profiles/activate': typeof ApiProfilesActivateRoute
   '/api/profiles/create': typeof ApiProfilesCreateRoute
   '/api/profiles/delete': typeof ApiProfilesDeleteRoute
@@ -867,6 +875,7 @@ export interface FileRoutesById {
   '/api/memory/write': typeof ApiMemoryWriteRoute
   '/api/oauth/device-code': typeof ApiOauthDeviceCodeRoute
   '/api/oauth/poll-token': typeof ApiOauthPollTokenRoute
+  '/api/playground/list': typeof ApiPlaygroundListRoute
   '/api/profiles/activate': typeof ApiProfilesActivateRoute
   '/api/profiles/create': typeof ApiProfilesCreateRoute
   '/api/profiles/delete': typeof ApiProfilesDeleteRoute
@@ -968,6 +977,7 @@ export interface FileRouteTypes {
     | '/api/memory/write'
     | '/api/oauth/device-code'
     | '/api/oauth/poll-token'
+    | '/api/playground/list'
     | '/api/profiles/activate'
     | '/api/profiles/create'
     | '/api/profiles/delete'
@@ -1066,6 +1076,7 @@ export interface FileRouteTypes {
     | '/api/memory/write'
     | '/api/oauth/device-code'
     | '/api/oauth/poll-token'
+    | '/api/playground/list'
     | '/api/profiles/activate'
     | '/api/profiles/create'
     | '/api/profiles/delete'
@@ -1165,6 +1176,7 @@ export interface FileRouteTypes {
     | '/api/memory/write'
     | '/api/oauth/device-code'
     | '/api/oauth/poll-token'
+    | '/api/playground/list'
     | '/api/profiles/activate'
     | '/api/profiles/create'
     | '/api/profiles/delete'
@@ -1254,6 +1266,7 @@ export interface RootRouteChildren {
   ApiMcpServersRoute: typeof ApiMcpServersRoute
   ApiOauthDeviceCodeRoute: typeof ApiOauthDeviceCodeRoute
   ApiOauthPollTokenRoute: typeof ApiOauthPollTokenRoute
+  ApiPlaygroundListRoute: typeof ApiPlaygroundListRoute
   ApiProfilesActivateRoute: typeof ApiProfilesActivateRoute
   ApiProfilesCreateRoute: typeof ApiProfilesCreateRoute
   ApiProfilesDeleteRoute: typeof ApiProfilesDeleteRoute
@@ -1760,6 +1773,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProfilesActivateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/playground/list': {
+      id: '/api/playground/list'
+      path: '/api/playground/list'
+      fullPath: '/api/playground/list'
+      preLoaderRoute: typeof ApiPlaygroundListRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/oauth/poll-token': {
       id: '/api/oauth/poll-token'
       path: '/api/oauth/poll-token'
@@ -2114,6 +2134,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMcpServersRoute: ApiMcpServersRoute,
   ApiOauthDeviceCodeRoute: ApiOauthDeviceCodeRoute,
   ApiOauthPollTokenRoute: ApiOauthPollTokenRoute,
+  ApiPlaygroundListRoute: ApiPlaygroundListRoute,
   ApiProfilesActivateRoute: ApiProfilesActivateRoute,
   ApiProfilesCreateRoute: ApiProfilesCreateRoute,
   ApiProfilesDeleteRoute: ApiProfilesDeleteRoute,
