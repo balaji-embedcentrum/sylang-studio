@@ -8,7 +8,7 @@
  * serialized DSL back when the editor reports a content change.
  */
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
-import { getTheme, isDarkTheme } from '@/lib/theme'
+import { getTheme, isDarkTheme, isValidTheme } from '@/lib/theme'
 import { useWorkspaceStore } from '@/stores/workspace-store'
 import { localReadFile, localWriteFile } from '@/lib/local-file-ops'
 import {
@@ -53,8 +53,41 @@ function getFileExtension(name: string): string {
 
 export { isSylangFile }
 
+/**
+ * Resolve the editor iframe's light/dark mode from the live `<html
+ * data-theme>` — the single source of truth that `setTheme()` and the
+ * __root bootstrap script authoritatively maintain. We deliberately do
+ * NOT use a one-shot `isDarkTheme(getTheme())`: `getTheme()` reads
+ * `localStorage` directly and is non-reactive, so a legacy `hermes-*`
+ * value (still valid in THEME_SET) or the SSR→client/migration ordering
+ * could lock the iframe to the wrong theme even after the host settles
+ * on the editorial light theme. Reading the DOM attribute makes the
+ * editor always match what the user actually sees.
+ */
+function readDocThemeMode(): 'dark' | 'light' {
+  if (typeof document !== 'undefined') {
+    const attr = document.documentElement.getAttribute('data-theme')
+    if (attr && isValidTheme(attr)) return isDarkTheme(attr) ? 'dark' : 'light'
+  }
+  return isDarkTheme(getTheme()) ? 'dark' : 'light'
+}
+
+function useLiveEditorThemeMode(): 'dark' | 'light' {
+  const [mode, setMode] = useState<'dark' | 'light'>(readDocThemeMode)
+  useEffect(() => {
+    const root = document.documentElement
+    const update = () => setMode(readDocThemeMode())
+    update() // reconcile any post-hydration / migration change
+    const obs = new MutationObserver(update)
+    obs.observe(root, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => obs.disconnect()
+  }, [])
+  return mode
+}
+
 export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate }: Props) {
   const fileExtension = getFileExtension(fileName)
+  const editorThemeMode = useLiveEditorThemeMode()
   const [doc, setDoc] = useState<SylangTiptapDocument | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -278,7 +311,7 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
             focusSymbolId={focusSymbolId}
             onChange={handleChange}
             bundleUrl="/sylang-editor/main.html"
-            theme={isDarkTheme(getTheme()) ? 'dark' : 'light'}
+            theme={editorThemeMode}
             colorPalette="orange"
             onReady={(post) => {
               postRef.current = post
@@ -626,7 +659,7 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
                     fileExtension,
                     fileName,
                     relativePath: filePath,
-                    colorPalette: 'teal',
+                    colorPalette: 'orange',
                     disabledBlockIds: [],
                   })
                   return
