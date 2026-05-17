@@ -21,10 +21,13 @@
     "lint": "eslint",
     "format": "prettier",
     "check": "prettier --write . && eslint --fix",
-    "sync:editor:sylang": "rm -rf public/sylang-editor && mkdir -p public/sylang-editor && cp -R ../sylang-core/packages/web-editor/dist-web/* public/sylang-editor/",
-    "sync:editor:diagrams": "rm -rf public/sylang-diagrams && mkdir -p public/sylang-diagrams && cp -R ../sylang-core/packages/web-diagrams/dist-web/* public/sylang-diagrams/",
+    "sync:editor:sylang": "rm -rf public/sylang-editor && mkdir -p public/sylang-editor && cp -R node_modules/@sylang/web-editor/dist-web/* public/sylang-editor/",
+    "sync:editor:diagrams": "rm -rf public/sylang-diagrams && mkdir -p public/sylang-diagrams && cp -R node_modules/@sylang/web-diagrams/dist-web/* public/sylang-diagrams/",
     "sync:editor:fmea": "rm -rf public/sylang-fmea && mkdir -p public/sylang-fmea && cp -R ../sylang-core/packages/fmea-view/dist-web/* public/sylang-fmea/",
-    "sync:editors": "pnpm sync:editor:sylang && pnpm sync:editor:diagrams && pnpm sync:editor:fmea"
+    "sync:editors:npm": "pnpm sync:editor:sylang && pnpm sync:editor:diagrams",
+    "sync:editors": "pnpm sync:editors:npm && pnpm sync:editor:fmea",
+    "prebuild": "pnpm sync:editors:npm",
+    "postinstall": "pnpm sync:editors:npm"
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",
@@ -55,7 +58,7 @@
     "@sylang/traceability": "^0.1.0",
     "@sylang/variant-matrix": "^0.1.0",
     "@sylang/web-diagrams": "^0.1.0",
-    "@sylang/web-editor": "^0.1.0",
+    "@sylang/web-editor": "^0.1.1",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-query": "^5.84.1",
     "@tanstack/react-router": "^1.132.0",
