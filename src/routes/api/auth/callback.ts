@@ -8,6 +8,7 @@
  * relying on @supabase/ssr's createServerClient, which has known issues
  * with PKCE cookie persistence in TanStack Start / Vinxi.
  */
+import '../../../server/ws-polyfill'
 import { createFileRoute } from '@tanstack/react-router'
 import { createClient } from '@supabase/supabase-js'
 import { provisionProfile } from '../../../server/supabase-auth'

@@ -6,6 +6,7 @@
  * All API routes call requireAuth(request) — returns user or throws 401.
  */
 
+import './ws-polyfill'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Profile } from '../lib/supabase'
 
