@@ -8,7 +8,12 @@ COPY package.json pnpm-lock.yaml .npmrc ./
 RUN npm install -g pnpm && pnpm install --no-frozen-lockfile
 
 COPY . .
-RUN pnpm build
+# Sync the @sylang editor bundles from node_modules into public/ AFTER the
+# source copy. The public/sylang-* dirs are no longer vendored in git, and
+# `postinstall` runs before `COPY . .` (so a stale bundle from the VPS
+# working tree could overlay it). This explicit, idempotent sync makes the
+# bundle deterministic regardless of pnpm pre/post-script settings.
+RUN pnpm sync:editors:npm && pnpm build
 
 # --- Production stage ---
 FROM node:22-alpine AS runner
