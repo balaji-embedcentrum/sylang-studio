@@ -36,8 +36,10 @@ const APP_CSP = [
 ].join('; ')
 
 const THEME_STORAGE_KEY = 'hermes-theme'
-const DEFAULT_THEME = 'hermes-official'
+const DEFAULT_THEME = 'sylang-studio-light'
 const VALID_THEMES = [
+  'sylang-studio',
+  'sylang-studio-light',
   'hermes-official',
   'hermes-official-light',
   'hermes-classic',
@@ -54,9 +56,22 @@ const themeScript = `
 
   try {
     const root = document.documentElement
-    const storedTheme = localStorage.getItem('${THEME_STORAGE_KEY}')
+    let storedTheme = localStorage.getItem('${THEME_STORAGE_KEY}')
+    // One-time migration to the Sylang Studio editorial theme. The Settings
+    // UI is hidden, so a legacy 'hermes-*' value was never a deliberate
+    // choice — move it once, preserving the user's dark/light lean. Marker
+    // makes this idempotent (a later explicit switch is respected).
+    try {
+      if (!localStorage.getItem('sylang-theme-migrated-v1')) {
+        if (!storedTheme || storedTheme.indexOf('hermes-') === 0) {
+          storedTheme = 'sylang-studio-light'
+          localStorage.setItem('${THEME_STORAGE_KEY}', storedTheme)
+        }
+        localStorage.setItem('sylang-theme-migrated-v1', '1')
+      }
+    } catch {}
     const theme = ${JSON.stringify(VALID_THEMES)}.includes(storedTheme) ? storedTheme : '${DEFAULT_THEME}'
-    const lightThemes = ['hermes-official-light', 'hermes-classic-light', 'hermes-slate-light', 'hermes-mono-light']
+    const lightThemes = ['sylang-studio-light', 'hermes-official-light', 'hermes-classic-light', 'hermes-slate-light', 'hermes-mono-light']
     const isDark = !lightThemes.includes(theme)
     root.classList.remove('light', 'dark', 'system')
     root.classList.add(isDark ? 'dark' : 'light')
@@ -79,6 +94,8 @@ const themeColorScript = `
     const root = document.documentElement
     const theme = root.getAttribute('data-theme') || '${DEFAULT_THEME}'
     const colors = {
+      'sylang-studio': '#0a0a0b',
+      'sylang-studio-light': '#fbfaf7',
       'hermes-official': '#0A0E1A',
       'hermes-official-light': '#F6F8FC',
       'hermes-classic': '#0d0f12',

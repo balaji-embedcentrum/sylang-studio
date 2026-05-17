@@ -8,6 +8,7 @@
  * serialized DSL back when the editor reports a content change.
  */
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
+import { getTheme, isDarkTheme } from '@/lib/theme'
 import { useWorkspaceStore } from '@/stores/workspace-store'
 import { localReadFile, localWriteFile } from '@/lib/local-file-ops'
 import {
@@ -277,7 +278,8 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
             focusSymbolId={focusSymbolId}
             onChange={handleChange}
             bundleUrl="/sylang-editor/main.html"
-            theme="dark"
+            theme={isDarkTheme(getTheme()) ? 'dark' : 'light'}
+            colorPalette="orange"
             onReady={(post) => {
               postRef.current = post
             }}
