@@ -24,6 +24,27 @@ type LocalWorkspace = {
   lastAccessed?: string
 }
 
+type PlaygroundProject = {
+  id: string
+  repo_full: string
+  repo_url: string | null
+  name: string | null
+  description: string | null
+  tags: string[] | null
+}
+
+type TabId = 'playground' | 'github' | 'local' | 'public'
+
+/** Parse a GitHub URL or `owner/repo` into `owner/repo`, or null. */
+function parsePublicRepo(input: string): string | null {
+  const s = input.trim().replace(/\.git$/, '')
+  if (!s) return null
+  const m =
+    s.match(/github\.com[/:]([^/\s]+\/[^/\s]+)/i) ??
+    s.match(/^([\w.-]+\/[\w.-]+)$/)
+  return m ? m[1] : null
+}
+
 function ProjectsPage() {
   const navigate = useNavigate()
   const localHermesUrl = useWorkspaceStore(s => s.localHermesUrl)
@@ -34,12 +55,16 @@ function ProjectsPage() {
   const [githubLogin, setGithubLogin] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [cloning, setCloning] = useState<{ repoFull: string; lines: string[] } | null>(null)
-  const [activeTab, setActiveTab] = useState<'github' | 'local'>(isLocalMode ? 'local' : 'github')
+  const [activeTab, setActiveTab] = useState<TabId>('playground')
   const [hasAgent, setHasAgent] = useState(true) // optimistic, checked on load
   const [localWorkspaces, setLocalWorkspaces] = useState<LocalWorkspace[]>([])
   const [localLoading, setLocalLoading] = useState(false)
   const [newProjectName, setNewProjectName] = useState('')
   const [showNewProject, setShowNewProject] = useState(false)
+  const [playground, setPlayground] = useState<PlaygroundProject[]>([])
+  const [playgroundLoading, setPlaygroundLoading] = useState(false)
+  const [publicRepoInput, setPublicRepoInput] = useState('')
+  const [publicRepoError, setPublicRepoError] = useState<string | null>(null)
 
   // Guard: redirect to /agents if no agent is selected (remote mode only).
   // BYO single-tenant agents (user_vps, user_tunnel) don't have a session
@@ -122,6 +147,20 @@ function ProjectsPage() {
         .finally(() => setLocalLoading(false))
     }
   }, [activeTab, localHermesUrl])
+
+  // Load the curated playground projects (global list) the first time the
+  // tab is viewed.
+  useEffect(() => {
+    if (activeTab !== 'playground' || playground.length > 0) return
+    setPlaygroundLoading(true)
+    fetch('/api/playground/list')
+      .then(r => r.json())
+      .then((data: { projects?: PlaygroundProject[] }) => {
+        setPlayground(data.projects ?? [])
+      })
+      .catch(() => setPlayground([]))
+      .finally(() => setPlaygroundLoading(false))
+  }, [activeTab, playground.length])
 
   const handleCreateProject = async () => {
     const name = newProjectName.trim()
@@ -258,6 +297,32 @@ function ProjectsPage() {
     }
   }
 
+  // Clone any public repo by `owner/repo` — reuses the exact same flow as
+  // a GitHub-repo card (open → clone). Playground projects and the
+  // "Clone Public Repo" tab both go through here.
+  const handleCloneRepoFull = (repoFull: string, description?: string | null) => {
+    void handleSelectRepo({
+      id: -1,
+      full_name: repoFull,
+      name: repoFull.split('/').pop() ?? repoFull,
+      description: description ?? null,
+      private: false,
+      updated_at: '',
+      language: null,
+      stargazers_count: 0,
+    })
+  }
+
+  const handleClonePublicRepo = () => {
+    const repoFull = parsePublicRepo(publicRepoInput)
+    if (!repoFull) {
+      setPublicRepoError('Enter a public repo as a GitHub URL or owner/repo.')
+      return
+    }
+    setPublicRepoError(null)
+    handleCloneRepoFull(repoFull)
+  }
+
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' })
     window.location.href = '/'
@@ -336,32 +401,141 @@ function ProjectsPage() {
           Projects
         </h1>
         <p className="text-sm mb-6" style={{ color: 'var(--theme-muted)' }}>
-          Open a GitHub repository or a local workspace
+          Start from a playground project, your GitHub repos, an existing clone, or any public repo
         </p>
 
         {/* Tabs */}
         <div className="flex items-center gap-1 mb-5 rounded-xl p-1" style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)' }}>
-          <button
-            onClick={() => setActiveTab('github')}
-            className="flex-1 text-sm py-2 rounded-lg font-medium transition-colors"
-            style={{
-              background: activeTab === 'github' ? 'var(--theme-accent)' : 'transparent',
-              color: activeTab === 'github' ? '#fff' : 'var(--theme-muted)',
-            }}
-          >
-            GitHub Repos
-          </button>
-          <button
-            onClick={() => setActiveTab('local')}
-            className="flex-1 text-sm py-2 rounded-lg font-medium transition-colors"
-            style={{
-              background: activeTab === 'local' ? 'var(--theme-accent)' : 'transparent',
-              color: activeTab === 'local' ? '#fff' : 'var(--theme-muted)',
-            }}
-          >
-            {isLocalMode ? 'Local' : 'Remote'} Workspaces
-          </button>
+          {([
+            ['playground', 'Playground Projects'],
+            ['public', 'Clone Public Repo'],
+            ['github', 'Your GitHub Repos'],
+            ['local', 'Your Cloned Repos'],
+          ] as Array<[TabId, string]>).map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className="flex-1 text-xs sm:text-sm py-2 px-1 rounded-lg font-medium transition-colors"
+              style={{
+                background: activeTab === id ? 'var(--theme-accent)' : 'transparent',
+                color: activeTab === id ? '#fff' : 'var(--theme-muted)',
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
+
+        {/* Playground Projects tab */}
+        {activeTab === 'playground' && (
+          <>
+            <input
+              type="text"
+              placeholder="Search playground projects..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full mb-5 px-4 py-2.5 rounded-xl text-sm outline-none"
+              style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)', color: 'var(--theme-text)' }}
+            />
+
+            {playgroundLoading && (
+              <div className="flex items-center justify-center py-20">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
+              </div>
+            )}
+
+            {!playgroundLoading && playground.length === 0 && (
+              <p className="text-sm text-center py-16" style={{ color: 'var(--theme-muted)' }}>
+                No playground projects yet.
+              </p>
+            )}
+
+            <div className="space-y-2">
+              {playground
+                .filter((p) => {
+                  const q = search.toLowerCase()
+                  return (
+                    (p.name ?? '').toLowerCase().includes(q) ||
+                    p.repo_full.toLowerCase().includes(q) ||
+                    (p.description ?? '').toLowerCase().includes(q)
+                  )
+                })
+                .map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => handleCloneRepoFull(p.repo_full, p.description)}
+                    className="w-full text-left rounded-xl px-4 py-4 transition-colors"
+                    style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--theme-accent)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--theme-border)' }}
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="font-medium text-sm truncate" style={{ color: 'var(--theme-text)' }}>
+                            {p.name || p.repo_full}
+                          </span>
+                          <span
+                            className="text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0"
+                            style={{ background: 'var(--theme-accent)', color: '#fff' }}
+                          >
+                            Playground
+                          </span>
+                        </div>
+                        {p.description && (
+                          <p className="text-xs truncate" style={{ color: 'var(--theme-muted)' }}>
+                            {p.description}
+                          </p>
+                        )}
+                      </div>
+                      {p.tags && p.tags.length > 0 && (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {p.tags.slice(0, 3).map((t) => (
+                            <span key={t} className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'var(--theme-card2)', color: 'var(--theme-muted)' }}>
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+            </div>
+          </>
+        )}
+
+        {/* Clone Public Repo tab */}
+        {activeTab === 'public' && (
+          <div className="rounded-xl p-5" style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)' }}>
+            <p className="text-sm mb-3" style={{ color: 'var(--theme-text)' }}>
+              Clone any public GitHub repository into your own private workspace.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="https://github.com/owner/repo  ·  or  owner/repo"
+                value={publicRepoInput}
+                onChange={(e) => { setPublicRepoInput(e.target.value); setPublicRepoError(null) }}
+                onKeyDown={(e) => e.key === 'Enter' && handleClonePublicRepo()}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm outline-none"
+                style={{ background: 'var(--theme-bg)', border: '1px solid var(--theme-border)', color: 'var(--theme-text)' }}
+              />
+              <button
+                onClick={handleClonePublicRepo}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium shrink-0"
+                style={{ background: 'var(--theme-accent)', color: '#fff' }}
+              >
+                Clone
+              </button>
+            </div>
+            {publicRepoError && (
+              <p className="text-xs mt-2" style={{ color: '#f87171' }}>{publicRepoError}</p>
+            )}
+            <p className="text-xs mt-3" style={{ color: 'var(--theme-muted)' }}>
+              Only public repos. Your changes stay in your private copy — they don't affect the original.
+            </p>
+          </div>
+        )}
 
         {/* GitHub Repos tab */}
         {activeTab === 'github' && (<>
