@@ -6,6 +6,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 import { requireAuth } from '../../../server/supabase-auth'
+import { decryptSecret } from '../../../server/secret-crypto'
 
 export const Route = createFileRoute('/api/github/repos')({
   server: {
@@ -14,7 +15,7 @@ export const Route = createFileRoute('/api/github/repos')({
         const auth = await requireAuth(request).catch(() => null)
         if (!auth) return json({ error: 'Unauthorized' }, { status: 401 })
 
-        const token = auth.profile.github_token
+        const token = decryptSecret(auth.profile.github_token)
         console.log('[github/repos] token present:', !!token)
         if (!token) return json({ error: 'No GitHub token — please sign out and sign in again' }, { status: 400 })
 

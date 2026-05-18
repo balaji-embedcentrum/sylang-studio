@@ -9,6 +9,7 @@
 import './ws-polyfill'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Profile } from '../lib/supabase'
+import { encryptSecret } from './secret-crypto'
 
 const SUPABASE_URL = process.env.SUPABASE_URL!
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY!
@@ -105,7 +106,7 @@ export async function provisionProfile(
     .insert([{
       id: user.id,
       github_login: githubLogin,
-      github_token: githubToken,
+      github_token: githubToken ? encryptSecret(githubToken) : null,
       system_uid: nextUid,
       email,
       credits: 10,
