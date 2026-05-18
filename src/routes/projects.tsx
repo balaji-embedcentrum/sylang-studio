@@ -408,9 +408,9 @@ function ProjectsPage() {
         <div className="flex items-center gap-1 mb-5 rounded-xl p-1" style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)' }}>
           {([
             ['playground', 'Playground Projects'],
+            ['public', 'Clone Public Repo'],
             ['github', 'Your GitHub Repos'],
             ['local', 'Your Cloned Repos'],
-            ['public', 'Clone Public Repo'],
           ] as Array<[TabId, string]>).map(([id, label]) => (
             <button
               key={id}

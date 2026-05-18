@@ -25,6 +25,8 @@ export const Route = createFileRoute('/api/playground/list')({
             'id, repo_full, repo_url, name, description, tags, default_branch, sort_order',
           )
           .eq('is_active', true)
+          // Only surface Sylang playground projects.
+          .contains('tags', ['sylang'])
           .order('sort_order', { ascending: true })
           .order('created_at', { ascending: true })
 
