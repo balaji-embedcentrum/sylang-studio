@@ -9,6 +9,7 @@ import { requireAuth } from '../../../server/supabase-auth'
 import { getSupabaseServer } from '../../../lib/supabase'
 import { getAgentConfig } from '../../../server/gateway-capabilities'
 import { decryptSecret } from '../../../server/secret-crypto'
+import { assertSafeForSecretTransport } from '../../../server/transport-guard'
 
 export const Route = createFileRoute('/api/workspaces/clone')({
   server: {
@@ -51,34 +52,22 @@ export const Route = createFileRoute('/api/workspaces/clone')({
 
         const token = decryptSecret(auth.profile.github_token)
 
-        // Never transmit the user's GitHub OAuth token over a plaintext channel
-        // to a non-local agent. Loopback and single-label (Docker/compose)
-        // hostnames stay on the box / private network; anything else must be
-        // HTTPS. Fail closed rather than leak a repo-scoped credential.
         if (token) {
-          let agentHost = ''
           try {
-            agentHost = new URL(agentUrl).hostname
-          } catch {
-            /* malformed URL — treated as unsafe below */
-          }
-          const isHttps = agentUrl.startsWith('https://')
-          const isLocalHost =
-            agentHost === 'localhost' ||
-            agentHost === '127.0.0.1' ||
-            agentHost === '::1' ||
-            (agentHost.length > 0 && !agentHost.includes('.'))
-          if (!isHttps && !isLocalHost) {
+            assertSafeForSecretTransport(agentUrl)
+          } catch (e) {
             return new Response(
-              JSON.stringify({
-                error:
-                  'Refusing to send GitHub credentials to a non-HTTPS agent endpoint. Configure the agent over HTTPS.',
-              }),
+              JSON.stringify({ error: (e as Error).message }),
               { status: 400 },
             )
           }
         }
 
+        // Legacy form: token embedded in URL. Kept so agents that do not yet
+        // understand the `git_auth` field below continue to work unchanged.
+        // The credential ends up persisted in their `.git/config` — which is
+        // exactly the staleness/exposure problem the `git_auth` field +
+        // per-claim askpass model is designed to replace once agents upgrade.
         const cloneUrl = token
           ? `https://${token}@github.com/${repoFull}.git`
           : `https://github.com/${repoFull}.git`
@@ -107,7 +96,14 @@ export const Route = createFileRoute('/api/workspaces/clone')({
               const r = await fetch(`${agentUrl}/ws/${encodeURIComponent(repoName)}/init`, {
                 method: 'POST',
                 headers: agentHeaders,
-                body: JSON.stringify({ url: cloneUrl }),
+                // `git_auth` is the forward-compatible form: agents that know
+                // this field should clone with a clean URL + http.extraHeader
+                // (so the token never lands in `.git/config`). Older agents
+                // simply ignore it and fall back to `url` above.
+                body: JSON.stringify({
+                  url: cloneUrl,
+                  git_auth: token ? { scheme: 'github-oauth', token } : undefined,
+                }),
               })
               const d = await r.json() as { status?: string; message?: string }
               if (d.status === 'ok') {

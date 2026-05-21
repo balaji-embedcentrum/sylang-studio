@@ -9,6 +9,7 @@
 
 import { getSupabaseServer } from '../lib/supabase'
 import { decryptSecret } from './secret-crypto'
+import { assertSafeForSecretTransport } from './transport-guard'
 
 // ── Constants ────────────────────────────────────────────────────────
 export const SESSION_DURATION_MS = 30 * 60 * 1000        // 30 min
@@ -49,7 +50,7 @@ export async function startSession(userId: string, agentId: string): Promise<Sta
   // 1. Check user tier + credits
   const { data: profile } = await db
     .from('profiles')
-    .select('tier, sessions_used, sessions_reset_at, github_login')
+    .select('tier, sessions_used, sessions_reset_at, github_login, github_token')
     .eq('id', userId)
     .single()
 
@@ -122,6 +123,7 @@ export async function startSession(userId: string, agentId: string): Promise<Sta
       agent.api_url,
       decryptSecret(agent.api_key),
       profile.github_login,
+      decryptSecret(profile.github_token),
     )
     if (!claim.ok) {
       // Mark the agent unavailable so it stops showing up as selectable
@@ -239,7 +241,7 @@ export async function endSession(
     .eq('id', session.agent_id)
     .single()
   if (agent?.api_url) {
-    await deactivateWorkspace(agent.api_url, agent.api_key)
+    await deactivateWorkspace(agent.api_url, decryptSecret(agent.api_key))
   }
 
   // Set agent to cooling down
@@ -415,7 +417,7 @@ export async function validateSession(userId: string): Promise<
     valid: true,
     sessionId: session.id,
     agentUrl: agent?.api_url ?? '',
-    agentKey: agent?.api_key ?? undefined,
+    agentKey: decryptSecret(agent?.api_key) ?? undefined,
   }
 }
 
@@ -665,6 +667,7 @@ export type ClaimResult =
         | 'conflict'
         | 'health_timeout'
         | 'server_error'
+        | 'unsafe_transport'
       message: string
       status?: number
     }
@@ -691,6 +694,12 @@ async function claimAgent(
   agentUrl: string,
   apiKey: string | null,
   githubLogin: string,
+  // Optional so the legacy `activateWorkspace` shim (and any other indirect
+  // callers) keep compiling unchanged. New code (startSession) passes the
+  // user's current decrypted OAuth token here so the agent can authenticate
+  // git operations during the claim's lifetime — no need to bake it into
+  // `.git/config` anymore. Old agents that don't read the field ignore it.
+  githubToken: string | null = null,
 ): Promise<ClaimResult> {
   const agentKey = deriveAgentKey(agentUrl)
   // BYO / single-tenant: no fleet plane to call, treat as success.
@@ -699,6 +708,21 @@ async function claimAgent(
   }
 
   const fleetBase = deriveFleetBase(agentUrl)
+
+  // Only refuse the call when we'd actually be putting a secret on the wire.
+  // No token = same trust envelope as before this change, no behavior change.
+  if (githubToken) {
+    try {
+      assertSafeForSecretTransport(fleetBase)
+    } catch (e) {
+      return {
+        ok: false,
+        reason: 'unsafe_transport',
+        message: e instanceof Error ? e.message : String(e),
+      }
+    }
+  }
+
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`
 
@@ -709,7 +733,12 @@ async function claimAgent(
     const res = await fetch(`${fleetBase}/fleet/claim`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ agent: agentKey, user: githubLogin }),
+      // `github_token` is forward-compatible: agents that understand it stash
+      // it in tmpfs for the duration of this claim and serve it via
+      // GIT_ASKPASS. Older agents ignore the unknown field — they continue to
+      // work exactly as before, using whatever credential ends up in
+      // `.git/config` at clone time.
+      body: JSON.stringify({ agent: agentKey, user: githubLogin, github_token: githubToken }),
       signal: AbortSignal.timeout(45_000),
     })
     if (res.ok) {
