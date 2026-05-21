@@ -8,6 +8,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { requireAuth } from '../../../server/supabase-auth'
 import { getSupabaseServer } from '../../../lib/supabase'
 import { getAgentConfig } from '../../../server/gateway-capabilities'
+import { decryptSecret } from '../../../server/secret-crypto'
 
 export const Route = createFileRoute('/api/workspaces/clone')({
   server: {
@@ -48,7 +49,36 @@ export const Route = createFileRoute('/api/workspaces/clone')({
         const agentHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
         if (agentConfig?.apiKey) agentHeaders['Authorization'] = `Bearer ${agentConfig.apiKey}`
 
-        const token = auth.profile.github_token
+        const token = decryptSecret(auth.profile.github_token)
+
+        // Never transmit the user's GitHub OAuth token over a plaintext channel
+        // to a non-local agent. Loopback and single-label (Docker/compose)
+        // hostnames stay on the box / private network; anything else must be
+        // HTTPS. Fail closed rather than leak a repo-scoped credential.
+        if (token) {
+          let agentHost = ''
+          try {
+            agentHost = new URL(agentUrl).hostname
+          } catch {
+            /* malformed URL — treated as unsafe below */
+          }
+          const isHttps = agentUrl.startsWith('https://')
+          const isLocalHost =
+            agentHost === 'localhost' ||
+            agentHost === '127.0.0.1' ||
+            agentHost === '::1' ||
+            (agentHost.length > 0 && !agentHost.includes('.'))
+          if (!isHttps && !isLocalHost) {
+            return new Response(
+              JSON.stringify({
+                error:
+                  'Refusing to send GitHub credentials to a non-HTTPS agent endpoint. Configure the agent over HTTPS.',
+              }),
+              { status: 400 },
+            )
+          }
+        }
+
         const cloneUrl = token
           ? `https://${token}@github.com/${repoFull}.git`
           : `https://github.com/${repoFull}.git`

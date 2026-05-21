@@ -12,6 +12,7 @@ import '../../../server/ws-polyfill'
 import { createFileRoute } from '@tanstack/react-router'
 import { createClient } from '@supabase/supabase-js'
 import { provisionProfile } from '../../../server/supabase-auth'
+import { encryptSecret } from '../../../server/secret-crypto'
 import { getPublicUrl } from '../../../server/request-url'
 
 const SUPABASE_URL = process.env.SUPABASE_URL!
@@ -101,7 +102,7 @@ export const Route = createFileRoute('/api/auth/callback')({
           if (!existing) {
             await provisionProfile(admin, user, provider_token ?? null)
           } else if (provider_token) {
-            await admin.from('profiles').update({ github_token: provider_token }).eq('id', user.id)
+            await admin.from('profiles').update({ github_token: encryptSecret(provider_token) }).eq('id', user.id)
           }
         } catch (err) {
           console.error('[auth/callback] Profile provisioning error:', err)

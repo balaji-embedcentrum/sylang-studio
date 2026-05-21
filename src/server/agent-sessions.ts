@@ -8,6 +8,7 @@
  */
 
 import { getSupabaseServer } from '../lib/supabase'
+import { decryptSecret } from './secret-crypto'
 
 // ── Constants ────────────────────────────────────────────────────────
 export const SESSION_DURATION_MS = 30 * 60 * 1000        // 30 min
@@ -119,7 +120,7 @@ export async function startSession(userId: string, agentId: string): Promise<Sta
   if (agent.api_url && profile.github_login) {
     const claim = await claimAgent(
       agent.api_url,
-      agent.api_key,
+      decryptSecret(agent.api_key),
       profile.github_login,
     )
     if (!claim.ok) {
@@ -174,7 +175,7 @@ export async function startSession(userId: string, agentId: string): Promise<Sta
     // Try to unclaim so the agent doesn't sit with a bind mount
     // belonging to a user who has no session.
     if (agent.api_url) {
-      unclaimAgent(agent.api_url, agent.api_key).catch(() => {})
+      unclaimAgent(agent.api_url, decryptSecret(agent.api_key)).catch(() => {})
     }
     return { ok: false, error: 'Failed to create session', code: 'agent_unavailable' }
   }
@@ -390,7 +391,7 @@ export async function validateSession(userId: string): Promise<
         valid: true,
         sessionId: newSession?.id ?? session.id,
         agentUrl: agent?.api_url ?? '',
-        agentKey: agent?.api_key ?? undefined,
+        agentKey: decryptSecret(agent?.api_key) ?? undefined,
         autoRenewed: true,
       }
     }
@@ -580,7 +581,7 @@ export async function endAllUserSessions(userId: string, reason: SessionEndReaso
       .eq('id', session.agent_id)
       .single()
     if (agent?.api_url) {
-      await deactivateWorkspace(agent.api_url, agent.api_key)
+      await deactivateWorkspace(agent.api_url, decryptSecret(agent.api_key))
     }
 
     const cooldownUntil = new Date(now.getTime() + COOLDOWN_MS)
