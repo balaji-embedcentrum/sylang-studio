@@ -9,6 +9,8 @@ import { requireAuth } from '../../../server/supabase-auth'
 import { getSupabaseServer } from '../../../lib/supabase'
 import { getAgentConfig } from '../../../server/gateway-capabilities'
 import { decryptSecret } from '../../../server/secret-crypto'
+import { assertSafeForSecretTransport } from '../../../server/transport-guard'
+import { applyCredentials } from '../../../server/git-credentials'
 
 export const Route = createFileRoute('/api/workspaces/clone')({
   server: {
@@ -51,34 +53,22 @@ export const Route = createFileRoute('/api/workspaces/clone')({
 
         const token = decryptSecret(auth.profile.github_token)
 
-        // Never transmit the user's GitHub OAuth token over a plaintext channel
-        // to a non-local agent. Loopback and single-label (Docker/compose)
-        // hostnames stay on the box / private network; anything else must be
-        // HTTPS. Fail closed rather than leak a repo-scoped credential.
         if (token) {
-          let agentHost = ''
           try {
-            agentHost = new URL(agentUrl).hostname
-          } catch {
-            /* malformed URL — treated as unsafe below */
-          }
-          const isHttps = agentUrl.startsWith('https://')
-          const isLocalHost =
-            agentHost === 'localhost' ||
-            agentHost === '127.0.0.1' ||
-            agentHost === '::1' ||
-            (agentHost.length > 0 && !agentHost.includes('.'))
-          if (!isHttps && !isLocalHost) {
+            assertSafeForSecretTransport(agentUrl)
+          } catch (e) {
             return new Response(
-              JSON.stringify({
-                error:
-                  'Refusing to send GitHub credentials to a non-HTTPS agent endpoint. Configure the agent over HTTPS.',
-              }),
+              JSON.stringify({ error: (e as Error).message }),
               { status: 400 },
             )
           }
         }
 
+        // We still send a token-bearing URL to `/init` because the agent
+        // needs *some* credential to clone a private repo and we can't
+        // pre-write .git/config (it doesn't exist yet). Immediately after
+        // clone we rewrite .git/config (origin → clean, token → extraHeader)
+        // so the token never persists in the URL form past first claim.
         const cloneUrl = token
           ? `https://${token}@github.com/${repoFull}.git`
           : `https://github.com/${repoFull}.git`
@@ -111,6 +101,20 @@ export const Route = createFileRoute('/api/workspaces/clone')({
               })
               const d = await r.json() as { status?: string; message?: string }
               if (d.status === 'ok') {
+                // Post-clone: swap the token out of origin URL into an
+                // http.extraHeader in .git/config. Best-effort — the clone
+                // succeeded either way, this just hardens the credential
+                // shape. Future claims will re-run the same rewrite with
+                // the user's then-current token.
+                if (token) {
+                  await applyCredentials(agentUrl, agentConfig?.apiKey ?? null, repoName, token)
+                    .catch((err) =>
+                      console.warn(
+                        `[clone] post-clone credential rewrite failed for ${repoName}:`,
+                        err instanceof Error ? err.message : err,
+                      ),
+                    )
+                }
                 admin.from('workspaces').update({ last_accessed: new Date().toISOString() }).eq('id', workspace_id).then(() => {})
                 send('ready', relativePath)
               } else {
