@@ -100,10 +100,10 @@ export const Route = createFileRoute('/api/auth/callback')({
             .single()
 
           if (!existing) {
-            await provisionProfile(admin, user, provider_token ?? null)
-          } else if (provider_token) {
-            await admin.from('profiles').update({ github_token: encryptSecret(provider_token) }).eq('id', user.id)
+            await provisionProfile(admin, user)
           }
+          // NB: the GitHub OAuth token is NOT written to the database — it
+          // goes into the `gh-token` cookie below and lives nowhere else.
         } catch (err) {
           console.error('[auth/callback] Profile provisioning error:', err)
           // Non-fatal — continue with login
@@ -120,27 +120,27 @@ export const Route = createFileRoute('/api/auth/callback')({
         const secure = isHttps ? '; Secure' : ''
         const encodedAT = encodeURIComponent(access_token)
 
-        // NARROWED TO A SINGLE SET-COOKIE to work around a runtime that
-        // collapses repeated Set-Cookie headers into one comma-merged header.
-        // The PKCE verifier expires on its own (Max-Age=600 from github.ts).
-        // Refresh token flow is not wired yet; session currently lasts
-        // expires_in (typically 1h from Supabase).
-        const sessionCookie = `sb-access-token=${encodedAT}; HttpOnly${secure}; SameSite=Lax; Path=/; Max-Age=${expires_in}`
+        // Two HttpOnly cookies: the Supabase session JWT, and the GitHub
+        // OAuth token (encrypted). Emitted as an array-of-pairs Response
+        // header so each Set-Cookie is its own line — a headers *object*
+        // would collapse the repeated key (see logout.ts for the same form).
+        // Refresh token flow is not wired yet; the session lasts expires_in
+        // (typically 1h from Supabase) and both cookies expire with it.
+        const cookieAttrs = `HttpOnly${secure}; SameSite=Lax; Path=/; Max-Age=${expires_in}`
+        const headers: Array<[string, string]> = [
+          ['Location', new URL('/agents', url).toString()],
+          ['Set-Cookie', `sb-access-token=${encodedAT}; ${cookieAttrs}`],
+        ]
+        // GitHub OAuth token — encrypted, never persisted to the database.
+        // It lives only in this cookie and, per session, in the agent.
+        if (provider_token) {
+          const encodedGh = encodeURIComponent(encryptSecret(provider_token))
+          headers.push(['Set-Cookie', `gh-token=${encodedGh}; ${cookieAttrs}`])
+        }
 
-        console.info(
-          '[auth/callback] Login successful for user:',
-          user.id,
-          '| setting cookie length:',
-          sessionCookie.length,
-        )
+        console.info('[auth/callback] Login successful for user:', user.id)
 
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location: new URL('/agents', url).toString(),
-            'Set-Cookie': sessionCookie,
-          },
-        })
+        return new Response(null, { status: 302, headers })
       },
     },
   },

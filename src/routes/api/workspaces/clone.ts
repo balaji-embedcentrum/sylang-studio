@@ -8,7 +8,6 @@ import { createFileRoute } from '@tanstack/react-router'
 import { requireAuth } from '../../../server/supabase-auth'
 import { getSupabaseServer } from '../../../lib/supabase'
 import { getAgentConfig } from '../../../server/gateway-capabilities'
-import { decryptSecret } from '../../../server/secret-crypto'
 import { assertSafeForSecretTransport } from '../../../server/transport-guard'
 import { applyCredentials } from '../../../server/git-credentials'
 
@@ -51,7 +50,7 @@ export const Route = createFileRoute('/api/workspaces/clone')({
         const agentHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
         if (agentConfig?.apiKey) agentHeaders['Authorization'] = `Bearer ${agentConfig.apiKey}`
 
-        const token = decryptSecret(auth.profile.github_token)
+        const token = auth.githubToken
 
         if (token) {
           try {
