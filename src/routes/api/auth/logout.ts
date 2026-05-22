@@ -29,7 +29,6 @@ export const Route = createFileRoute('/api/auth/logout')({
           ['Content-Type', 'application/json'],
           ['Set-Cookie', expire('sb-access-token')],
           ['Set-Cookie', expire('sb-refresh-token')],
-          ['Set-Cookie', expire('gh-token')],
           ['Set-Cookie', `hermes_force_reauth=1; HttpOnly${secure}; SameSite=Lax; Path=/; Max-Age=600`],
         ]
 
