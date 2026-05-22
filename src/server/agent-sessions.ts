@@ -9,6 +9,7 @@
 
 import { getSupabaseServer } from '../lib/supabase'
 import { decryptSecret } from './secret-crypto'
+import { applyCredentials, clearCredentials } from './git-credentials'
 
 // ── Constants ────────────────────────────────────────────────────────
 export const SESSION_DURATION_MS = 30 * 60 * 1000        // 30 min
@@ -49,7 +50,7 @@ export async function startSession(userId: string, agentId: string): Promise<Sta
   // 1. Check user tier + credits
   const { data: profile } = await db
     .from('profiles')
-    .select('tier, sessions_used, sessions_reset_at, github_login')
+    .select('tier, sessions_used, sessions_reset_at, github_login, github_token')
     .eq('id', userId)
     .single()
 
@@ -150,6 +151,31 @@ export async function startSession(userId: string, agentId: string): Promise<Sta
         code: 'agent_unavailable',
       }
     }
+
+    // Studio-managed git credentials: refresh each of this user's repos
+    // on this agent with their *current* OAuth token, as an http.extraHeader
+    // in .git/config. No token in the URL, no clone-time staleness.
+    // Best-effort — claim itself has already succeeded; if a single repo
+    // can't be rewritten (agent file API hiccup, etc.) we log and move on.
+    const userToken = decryptSecret(profile.github_token)
+    if (userToken) {
+      const agentKeyForFile = decryptSecret(agent.api_key)
+      const { data: userWorkspaces } = await db
+        .from('workspaces')
+        .select('repo_full')
+        .eq('user_id', userId)
+      for (const ws of userWorkspaces ?? []) {
+        const repoName = (ws.repo_full as string).split('/').pop() ?? ''
+        if (!repoName) continue
+        await applyCredentials(agent.api_url, agentKeyForFile, repoName, userToken)
+          .catch((err) =>
+            console.warn(
+              `[sessions] cred refresh failed for ${repoName}:`,
+              err instanceof Error ? err.message : err,
+            ),
+          )
+      }
+    }
   }
 
   // 5. Create session + update agent status
@@ -239,7 +265,25 @@ export async function endSession(
     .eq('id', session.agent_id)
     .single()
   if (agent?.api_url) {
-    await deactivateWorkspace(agent.api_url, agent.api_key)
+    const agentKeyForFile = decryptSecret(agent.api_key)
+    // Clear studio-managed credentials before unclaim — once the workspace
+    // bind-mount detaches, .git/config is no longer reachable via the
+    // file API, so this has to happen first.
+    const { data: userWorkspaces } = await db
+      .from('workspaces')
+      .select('repo_full')
+      .eq('user_id', userId)
+    for (const ws of userWorkspaces ?? []) {
+      const repoName = (ws.repo_full as string).split('/').pop() ?? ''
+      if (!repoName) continue
+      await clearCredentials(agent.api_url, agentKeyForFile, repoName).catch((err) =>
+        console.warn(
+          `[sessions] cred clear failed for ${repoName}:`,
+          err instanceof Error ? err.message : err,
+        ),
+      )
+    }
+    await deactivateWorkspace(agent.api_url, agentKeyForFile)
   }
 
   // Set agent to cooling down
@@ -415,7 +459,7 @@ export async function validateSession(userId: string): Promise<
     valid: true,
     sessionId: session.id,
     agentUrl: agent?.api_url ?? '',
-    agentKey: agent?.api_key ?? undefined,
+    agentKey: decryptSecret(agent?.api_key) ?? undefined,
   }
 }
 
@@ -581,7 +625,22 @@ export async function endAllUserSessions(userId: string, reason: SessionEndReaso
       .eq('id', session.agent_id)
       .single()
     if (agent?.api_url) {
-      await deactivateWorkspace(agent.api_url, decryptSecret(agent.api_key))
+      const agentKeyForFile = decryptSecret(agent.api_key)
+      const { data: userWorkspaces } = await db
+        .from('workspaces')
+        .select('repo_full')
+        .eq('user_id', userId)
+      for (const ws of userWorkspaces ?? []) {
+        const repoName = (ws.repo_full as string).split('/').pop() ?? ''
+        if (!repoName) continue
+        await clearCredentials(agent.api_url, agentKeyForFile, repoName).catch((err) =>
+          console.warn(
+            `[sessions] cred clear failed for ${repoName}:`,
+            err instanceof Error ? err.message : err,
+          ),
+        )
+      }
+      await deactivateWorkspace(agent.api_url, agentKeyForFile)
     }
 
     const cooldownUntil = new Date(now.getTime() + COOLDOWN_MS)
