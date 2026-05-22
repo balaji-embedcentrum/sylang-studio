@@ -44,13 +44,13 @@ export type StartSessionResult =
   | { ok: false; error: string; code: 'no_credits' | 'agent_unavailable' | 'already_active' | 'agent_locked' }
 
 // ── Start Session ────────────────────────────────────────────────────
-export async function startSession(userId: string, agentId: string): Promise<StartSessionResult> {
+export async function startSession(userId: string, agentId: string, githubToken: string | null): Promise<StartSessionResult> {
   const db = getSupabaseServer()
 
   // 1. Check user tier + credits
   const { data: profile } = await db
     .from('profiles')
-    .select('tier, sessions_used, sessions_reset_at, github_login, github_token')
+    .select('tier, sessions_used, sessions_reset_at, github_login')
     .eq('id', userId)
     .single()
 
@@ -157,7 +157,7 @@ export async function startSession(userId: string, agentId: string): Promise<Sta
     // in .git/config. No token in the URL, no clone-time staleness.
     // Best-effort — claim itself has already succeeded; if a single repo
     // can't be rewritten (agent file API hiccup, etc.) we log and move on.
-    const userToken = decryptSecret(profile.github_token)
+    const userToken = githubToken
     if (userToken) {
       const agentKeyForFile = decryptSecret(agent.api_key)
       const { data: userWorkspaces } = await db

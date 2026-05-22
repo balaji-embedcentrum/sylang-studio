@@ -1,6 +1,6 @@
 /**
- * Application-layer encryption for secrets stored at rest (DB columns:
- * `agent_instances.api_key`, `profiles.github_token`).
+ * Application-layer encryption for secrets at rest: the
+ * `agent_instances.api_key` DB column and the `gh-token` HttpOnly cookie.
  *
  * Threat model: defends against database-only compromise — a leaked Supabase
  * `service_role` key (e.g. in logs), a leaked backup/replica, a misconfigured
