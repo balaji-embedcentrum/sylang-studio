@@ -118,29 +118,34 @@ export const Route = createFileRoute('/api/auth/callback')({
         //
         const isHttps = url.protocol === 'https:'
         const secure = isHttps ? '; Secure' : ''
-        const encodedAT = encodeURIComponent(access_token)
 
-        // Two HttpOnly cookies: the Supabase session JWT, and the GitHub
-        // OAuth token (encrypted). Emitted as an array-of-pairs Response
-        // header so each Set-Cookie is its own line — a headers *object*
-        // would collapse the repeated key (see logout.ts for the same form).
-        // Refresh token flow is not wired yet; the session lasts expires_in
-        // (typically 1h from Supabase) and both cookies expire with it.
-        const cookieAttrs = `HttpOnly${secure}; SameSite=Lax; Path=/; Max-Age=${expires_in}`
-        const headers: Array<[string, string]> = [
-          ['Location', new URL('/agents', url).toString()],
-          ['Set-Cookie', `sb-access-token=${encodedAT}; ${cookieAttrs}`],
-        ]
-        // GitHub OAuth token — encrypted, never persisted to the database.
-        // It lives only in this cookie and, per session, in the agent.
+        // ONE cookie, ONE Set-Cookie, object-form headers — the exact shape
+        // the callback used before PR #17 and the only shape that survives
+        // the 302 redirect path intact. A second Set-Cookie / array-of-pairs
+        // header gets dropped on a redirect (that was the #17 login bug).
+        //
+        // Value: the Supabase JWT, optionally followed by
+        // `|<encrypted-github-token>`. The GitHub token therefore rides
+        // inside the session cookie — never in the database.
+        // Refresh token flow is not wired yet; session lasts expires_in
+        // (typically 1h from Supabase).
+        let cookieValue = access_token
         if (provider_token) {
-          const encodedGh = encodeURIComponent(encryptSecret(provider_token))
-          headers.push(['Set-Cookie', `gh-token=${encodedGh}; ${cookieAttrs}`])
+          cookieValue += '|' + encryptSecret(provider_token)
         }
+        const sessionCookie =
+          `sb-access-token=${encodeURIComponent(cookieValue)}; ` +
+          `HttpOnly${secure}; SameSite=Lax; Path=/; Max-Age=${expires_in}`
 
         console.info('[auth/callback] Login successful for user:', user.id)
 
-        return new Response(null, { status: 302, headers })
+        return new Response(null, {
+          status: 302,
+          headers: {
+            Location: new URL('/agents', url).toString(),
+            'Set-Cookie': sessionCookie,
+          },
+        })
       },
     },
   },

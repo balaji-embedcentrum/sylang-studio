@@ -133,26 +133,30 @@ function extractToken(request: Request): string | null {
   const auth = request.headers.get('authorization')
   if (auth?.startsWith('Bearer ')) return auth.slice(7)
 
-  // 2. Cookie: sb-access-token=<token>
+  // 2. Cookie: sb-access-token=<jwt>[|<encrypted-github-token>]
   const cookie = request.headers.get('cookie') ?? ''
   const match = cookie.match(/(?:^|;\s*)sb-access-token=([^;]+)/)
-  if (match) return decodeURIComponent(match[1])
+  if (match) return decodeURIComponent(match[1]).split('|')[0]
 
   return null
 }
 
 /**
- * The user's GitHub OAuth token, carried in its own HttpOnly `gh-token`
- * cookie (AES-encrypted with SECRETS_ENCRYPTION_KEY — never stored in the
- * database). Returns null when the cookie is absent or undecryptable;
- * callers treat that as "the user needs to reconnect GitHub."
+ * The user's GitHub OAuth token. It rides as the `|`-suffixed segment of the
+ * `sb-access-token` cookie value (`<jwt>|<encrypted-token>`), AES-encrypted
+ * with SECRETS_ENCRYPTION_KEY — never stored in the database. Returns null
+ * when absent or undecryptable; callers treat that as "reconnect GitHub."
+ * (One cookie, not two: a second cookie is dropped on the 302 login
+ * redirect — see callback.ts.)
  */
 function extractGithubToken(request: Request): string | null {
   const cookie = request.headers.get('cookie') ?? ''
-  const match = cookie.match(/(?:^|;\s*)gh-token=([^;]+)/)
+  const match = cookie.match(/(?:^|;\s*)sb-access-token=([^;]+)/)
   if (!match) return null
+  const parts = decodeURIComponent(match[1]).split('|')
+  if (parts.length < 2 || !parts[1]) return null
   try {
-    return decryptSecret(decodeURIComponent(match[1]))
+    return decryptSecret(parts[1])
   } catch {
     return null
   }
