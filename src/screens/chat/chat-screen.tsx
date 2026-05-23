@@ -424,6 +424,62 @@ function shouldCollapseTextDuplicate(
   return true
 }
 
+/**
+ * Last-resort defensive dedup at the render layer.
+ *
+ * The chat-store dedup (on 'message' and 'done' events) and the
+ * finalDisplayMessages text dedup both compare assistant message text
+ * with strict equality after some normalization. Occasionally a
+ * duplicate still slips through — most commonly when the same welcome
+ * or canned response arrives twice via different channels (history
+ * refetch + SSE, or 'done' + a trailing 'message' event), and the two
+ * copies differ by formatting markers (e.g. **bold** vs <strong> after
+ * rendering), trailing whitespace, or zero-width characters that the
+ * earlier normalization didn't strip.
+ *
+ * This pass walks the final message list and drops any assistant
+ * message whose normalized text is identical to the immediately
+ * preceding assistant message in the list. It only collapses
+ * IMMEDIATELY ADJACENT pairs to avoid hiding distant agent repeats
+ * that the user actually wanted to see.
+ */
+function normalizeForDedup(message: ChatMessage): string {
+  return textFromMessage(message)
+    .replace(/\*\*/g, '')
+    .replace(/[​-‍﻿]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function collapseAdjacentAssistantDuplicates(
+  messages: Array<ChatMessage>,
+): Array<ChatMessage> {
+  if (messages.length < 2) return messages
+  const result: Array<ChatMessage> = []
+  let lastAssistantNormalized: string | null = null
+  for (const msg of messages) {
+    if (msg.role !== 'assistant') {
+      result.push(msg)
+      lastAssistantNormalized = null
+      continue
+    }
+    const normalized = normalizeForDedup(msg)
+    if (
+      normalized.length > 20 &&
+      lastAssistantNormalized !== null &&
+      normalized === lastAssistantNormalized
+    ) {
+      // Same text as the prior assistant turn — drop this one. Keep the
+      // earlier one because the streaming placeholder (when present) is
+      // appended LATER in the list, so the prior is the "real" one.
+      continue
+    }
+    result.push(msg)
+    lastAssistantNormalized = normalized
+  }
+  return result
+}
+
 function stripQueuedWrapperFromUserMessage(message: ChatMessage): ChatMessage {
   if (message.role !== 'user') return message
 
@@ -1215,7 +1271,7 @@ export function ChatScreen({
       .map((msg) => stripQueuedWrapperFromUserMessage(msg))
 
     if (!activeIsRealtimeStreaming) {
-      return deduped
+      return collapseAdjacentAssistantDuplicates(deduped)
     }
 
     const nextMessages = [...deduped]
@@ -1286,7 +1342,7 @@ export function ChatScreen({
     } else {
       nextMessages.push(streamingMsg)
     }
-    return nextMessages
+    return collapseAdjacentAssistantDuplicates(nextMessages)
   }, [
     activeToolCalls,
     activeIsRealtimeStreaming,
