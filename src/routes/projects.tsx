@@ -66,6 +66,8 @@ function ProjectsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [newProjectName, setNewProjectName] = useState('')
   const [showNewProject, setShowNewProject] = useState(false)
+  const [newProjectError, setNewProjectError] = useState<string | null>(null)
+  const [creatingProject, setCreatingProject] = useState(false)
   const [playground, setPlayground] = useState<PlaygroundProject[]>([])
   const [playgroundLoading, setPlaygroundLoading] = useState(false)
   const [publicRepoInput, setPublicRepoInput] = useState('')
@@ -171,35 +173,62 @@ function ProjectsPage() {
   const handleCreateProject = async () => {
     const name = newProjectName.trim()
     if (!name) return
+    setNewProjectError(null)
+    setCreatingProject(true)
     try {
       if (localHermesUrl) {
         // Local mode: create empty workspace via local agent
-        const res = await fetch(`${localHermesUrl}/ws/${encodeURIComponent(name)}/init`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ empty: true }),
-        })
-        const data = await res.json() as { status: string; path?: string }
+        const res = await fetch(
+          `${localHermesUrl}/ws/${encodeURIComponent(name)}/init`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ empty: true }),
+          },
+        )
+        const data = (await res.json().catch(() => ({}))) as {
+          status?: string
+          path?: string
+          message?: string
+        }
+        if (!res.ok || data.status !== 'ok' || !data.path) {
+          setNewProjectError(
+            data.message ?? `Local agent could not create project (${res.status})`,
+          )
+          return
+        }
         setShowNewProject(false)
         setNewProjectName('')
-        if (data.status === 'ok' && data.path) {
-          navigate({ to: '/files', search: { path: data.path } })
-        }
+        navigate({ to: '/files', search: { path: data.path } })
       } else {
-        // Remote mode: create via server API
+        // Remote mode: create via server API. Server now verifies the
+        // agent actually created the directory before returning ok.
         const res = await fetch('/api/workspaces/create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name }),
         })
-        const data = await res.json() as { ok?: boolean; path?: string; error?: string }
+        const data = (await res.json().catch(() => ({}))) as {
+          ok?: boolean
+          path?: string
+          error?: string
+          agent_reported_path?: string | null
+        }
+        if (!res.ok || !data.ok || !data.path) {
+          setNewProjectError(
+            data.error ?? `Project creation failed (${res.status})`,
+          )
+          return
+        }
         setShowNewProject(false)
         setNewProjectName('')
-        if (data.ok && data.path) {
-          navigate({ to: '/files', search: { path: data.path } })
-        }
+        navigate({ to: '/files', search: { path: data.path } })
       }
-    } catch { /* ignore */ }
+    } catch (err) {
+      setNewProjectError(err instanceof Error ? err.message : 'Network error')
+    } finally {
+      setCreatingProject(false)
+    }
   }
 
   // Permanently delete a cloned repo — removes the directory on the agent's
@@ -672,31 +701,52 @@ function ProjectsPage() {
                 + New Project
               </button>
             ) : (
-              <div className="mb-5 flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Project name..."
-                  value={newProjectName}
-                  onChange={(e) => setNewProjectName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleCreateProject()}
-                  autoFocus
-                  className="flex-1 px-4 py-2.5 rounded-xl text-sm outline-none"
-                  style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-accent)', color: 'var(--theme-text)' }}
-                />
-                <button
-                  onClick={handleCreateProject}
-                  className="px-4 py-2.5 rounded-xl text-sm font-medium"
-                  style={{ background: 'var(--theme-accent)', color: '#fff' }}
-                >
-                  Create
-                </button>
-                <button
-                  onClick={() => { setShowNewProject(false); setNewProjectName('') }}
-                  className="px-3 py-2.5 rounded-xl text-sm"
-                  style={{ background: 'var(--theme-card)', color: 'var(--theme-muted)', border: '1px solid var(--theme-border)' }}
-                >
-                  Cancel
-                </button>
+              <div className="mb-5">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Project name..."
+                    value={newProjectName}
+                    onChange={(e) => setNewProjectName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleCreateProject()}
+                    autoFocus
+                    disabled={creatingProject}
+                    className="flex-1 px-4 py-2.5 rounded-xl text-sm outline-none disabled:opacity-60"
+                    style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-accent)', color: 'var(--theme-text)' }}
+                  />
+                  <button
+                    onClick={handleCreateProject}
+                    disabled={creatingProject}
+                    className="px-4 py-2.5 rounded-xl text-sm font-medium disabled:opacity-60"
+                    style={{ background: 'var(--theme-accent)', color: '#fff' }}
+                  >
+                    {creatingProject ? 'Creating…' : 'Create'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowNewProject(false)
+                      setNewProjectName('')
+                      setNewProjectError(null)
+                    }}
+                    disabled={creatingProject}
+                    className="px-3 py-2.5 rounded-xl text-sm disabled:opacity-60"
+                    style={{ background: 'var(--theme-card)', color: 'var(--theme-muted)', border: '1px solid var(--theme-border)' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {newProjectError && (
+                  <div
+                    className="mt-2 px-3 py-2 rounded-lg text-xs"
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      color: '#dc2626',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                    }}
+                  >
+                    {newProjectError}
+                  </div>
+                )}
               </div>
             )}
 
