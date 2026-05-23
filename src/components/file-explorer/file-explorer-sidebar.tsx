@@ -13,17 +13,18 @@ import {
   RefreshIcon,
   Upload01Icon,
 } from '@hugeicons/core-free-icons'
+import { GitPanel } from '../git-panel'
 import FilePreviewDialog from './file-preview-dialog'
-import { GitPanel, type GitDiffSelection } from '../git-panel'
+import type { GitDiffSelection } from '../git-panel'
 import { cn } from '@/lib/utils'
 import { useWorkspaceStore } from '@/stores/workspace-store'
 import {
+  localDeleteFile,
+  localGitPull,
   localListFiles,
+  localMkdir,
   localReadFile,
   localWriteFile,
-  localDeleteFile,
-  localMkdir,
-  localGitPull,
 } from '@/lib/local-file-ops'
 import {
   ScrollAreaCorner,
