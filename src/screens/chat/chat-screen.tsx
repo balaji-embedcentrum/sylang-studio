@@ -582,6 +582,7 @@ export function ChatScreen({
     completedStreamingThinking,
     clearCompletedStreaming,
     activeToolCalls,
+    streamingRunId,
   } = useRealtimeChatHistory({
     sessionKey: isPortableMode
       ? 'main'
@@ -1223,10 +1224,16 @@ export function ChatScreen({
       phase: toolCall.phase,
     }))
 
+    // Key the placeholder by runId so each new send gets a fresh MessageItem
+    // instance. Reusing a constant key ('streaming-current') caused React to
+    // keep the previous run's MessageItem alive, including its useState
+    // displayText/revealedText, so the prior assistant message's text bled
+    // into the new turn's bubble until the next chunk arrived.
+    const streamingPlaceholderId = `streaming-${streamingRunId ?? 'pending'}`
     const streamingMsg = {
       role: 'assistant',
       content: [],
-      __optimisticId: 'streaming-current',
+      __optimisticId: streamingPlaceholderId,
       __streamingStatus: 'streaming',
       __streamingText: activeRealtimeStreamingText,
       __streamingThinking: realtimeStreamingThinking,
@@ -1263,6 +1270,7 @@ export function ChatScreen({
     activeRealtimeStreamingText,
     realtimeMessages,
     realtimeStreamingThinking,
+    streamingRunId,
   ])
 
   const derivedStreamingInfo = useMemo(() => {
