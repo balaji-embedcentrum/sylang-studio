@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/terms')({
   component: TermsPage,
@@ -45,6 +45,7 @@ function TermsPage() {
         >
           <Link
             to="/"
+            search={{ error: undefined }}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -54,7 +55,7 @@ function TermsPage() {
             }}
           >
             <img
-              src="/hermes-crest.svg"
+              src="/sylang-logo.svg"
               alt="Sylang Studio"
               style={{ width: 26, height: 26 }}
             />
@@ -311,6 +312,7 @@ function TermsPage() {
         <div style={{ textAlign: 'center', marginTop: 32 }}>
           <Link
             to="/"
+            search={{ error: undefined }}
             style={{
               display: 'inline-block',
               padding: '10px 24px',

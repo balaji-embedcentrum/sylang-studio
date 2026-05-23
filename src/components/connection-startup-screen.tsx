@@ -114,7 +114,6 @@ export function ConnectionStartupScreen({ onConnected }: Props) {
       if (pollTimer) clearTimeout(pollTimer)
       clearTimeout(failureTimer)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -186,7 +185,7 @@ export function ConnectionStartupScreen({ onConnected }: Props) {
     >
       <div className="flex w-full max-w-lg flex-col items-center text-center">
         <img
-          src="/hermes-crest.svg"
+          src="/sylang-logo.svg"
           alt="Sylang Studio"
           className="mb-5 h-20 w-20 rounded-2xl object-cover shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
         />

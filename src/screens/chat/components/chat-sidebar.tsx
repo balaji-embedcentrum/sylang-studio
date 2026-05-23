@@ -828,7 +828,7 @@ function ChatSidebarComponent({
                 )}
               >
                 <img
-                  src="/hermes-crest.svg"
+                  src="/sylang-logo.svg"
                   alt="Sylang Studio"
                   className="size-6 rounded-lg"
                 />

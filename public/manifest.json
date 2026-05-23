@@ -9,7 +9,7 @@
   "categories": ["productivity", "utilities", "developer"],
   "icons": [
     {
-      "src": "/hermes-crest.svg",
+      "src": "/sylang-logo.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
