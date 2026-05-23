@@ -430,19 +430,23 @@ function shouldCollapseTextDuplicate(
  * The chat-store dedup (on 'message' and 'done' events) and the
  * finalDisplayMessages text dedup both compare assistant message text
  * with strict equality after some normalization. Occasionally a
- * duplicate still slips through — most commonly when the same welcome
- * or canned response arrives twice via different channels (history
- * refetch + SSE, or 'done' + a trailing 'message' event), and the two
- * copies differ by formatting markers (e.g. **bold** vs <strong> after
- * rendering), trailing whitespace, or zero-width characters that the
- * earlier normalization didn't strip.
+ * duplicate still slips through — most commonly when the agent repeats
+ * a canned welcome response across consecutive turns, or when the same
+ * message arrives twice via different channels (history refetch + SSE,
+ * 'done' + a trailing 'message' event) and the copies differ by
+ * formatting markers (e.g. **bold** vs <strong> after rendering),
+ * trailing whitespace, or zero-width chars that the earlier
+ * normalization didn't strip.
  *
  * This pass walks the final message list and drops any assistant
- * message whose normalized text is identical to the immediately
- * preceding assistant message in the list. It only collapses
- * IMMEDIATELY ADJACENT pairs to avoid hiding distant agent repeats
- * that the user actually wanted to see.
+ * message whose normalized text matches any of the previous
+ * WINDOW_SIZE assistant messages in the same session. Compares across
+ * intervening user messages because the typical leak pattern is
+ * A1=welcome, U1, A2=welcome (agent re-emits the welcome on every
+ * turn until it engages with the actual question).
  */
+const RECENT_ASSISTANT_WINDOW = 5
+
 function normalizeForDedup(message: ChatMessage): string {
   return textFromMessage(message)
     .replace(/\*\*/g, '')
@@ -456,26 +460,30 @@ function collapseAdjacentAssistantDuplicates(
 ): Array<ChatMessage> {
   if (messages.length < 2) return messages
   const result: Array<ChatMessage> = []
-  let lastAssistantNormalized: string | null = null
+  const recentAssistantTexts: Array<string> = []
   for (const msg of messages) {
     if (msg.role !== 'assistant') {
+      // User / system messages don't reset the recent-assistant window —
+      // the duplicate pattern we're fighting always has a user turn
+      // between the two identical assistant replies.
       result.push(msg)
-      lastAssistantNormalized = null
       continue
     }
     const normalized = normalizeForDedup(msg)
     if (
       normalized.length > 20 &&
-      lastAssistantNormalized !== null &&
-      normalized === lastAssistantNormalized
+      recentAssistantTexts.includes(normalized)
     ) {
-      // Same text as the prior assistant turn — drop this one. Keep the
-      // earlier one because the streaming placeholder (when present) is
-      // appended LATER in the list, so the prior is the "real" one.
+      // Same text as a recent prior assistant turn — drop this one.
       continue
     }
     result.push(msg)
-    lastAssistantNormalized = normalized
+    if (normalized.length > 20) {
+      recentAssistantTexts.push(normalized)
+      if (recentAssistantTexts.length > RECENT_ASSISTANT_WINDOW) {
+        recentAssistantTexts.shift()
+      }
+    }
   }
   return result
 }
