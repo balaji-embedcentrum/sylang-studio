@@ -14,8 +14,40 @@ export type MarkdownProps = {
   components?: Partial<Components>
 }
 
+/**
+ * Defensive cleanup for common malformations produced by chat agents that
+ * emit close-fence directly against the preceding block, or open-fence with
+ * no preceding blank line. Without the blank line, marked.lexer treats the
+ * fence as continuation of the previous block (a table row continues, a
+ * paragraph absorbs the fence as literal), and the entire code block ends
+ * up rendered as stacked plain-text lines with no <pre> / Shiki / copy
+ * button. We don't touch fence content — only the surrounding whitespace.
+ */
+function normalizeMarkdown(markdown: string): string {
+  let normalized = markdown
+  // 1. Fence glued to the end of a previous line (no newline at all between
+  //    them): split with a hard blank line. Most common is a table row
+  //    ending in `|` immediately followed by ```lang on the same line.
+  normalized = normalized.replace(/([^\n`])(`{3,})/g, '$1\n\n$2')
+  // 2. Fence on its own line but with no blank line above. Insert one so
+  //    marked.lexer treats it as a standalone block.
+  normalized = normalized.replace(/([^\n])\n(`{3,})/g, '$1\n\n$2')
+  // 3. Same on the closing side: fence followed by non-blank content.
+  normalized = normalized.replace(/(`{3,}[^\n]*)\n([^\n])/g, (full, fence, next) => {
+    // Don't add a blank line inside a fence body — only after the marker
+    // line. The fence marker line is `^\`{3,}[lang]?$` (opening) or
+    // `^\`{3,}$` (closing). We treat any matched fence line as a marker.
+    if (/^`{3,}\w*$/.test(fence.trimStart())) {
+      return `${fence}\n\n${next}`
+    }
+    return full
+  })
+  return normalized
+}
+
 function parseMarkdownIntoBlocks(markdown: string): Array<string> {
-  const tokens = marked.lexer(markdown)
+  const cleaned = normalizeMarkdown(markdown)
+  const tokens = marked.lexer(cleaned)
   return tokens.map((token) => token.raw)
 }
 
@@ -196,9 +228,13 @@ const INITIAL_COMPONENTS: Partial<Components> = {
     return <hr className="my-4 border-primary-200" />
   },
   table: function TableComponent({ children }) {
+    // Wrap in overflow-x-auto so genuinely wide tables can scroll, but use
+    // a layout that lets cells wrap when the bubble width can't fit them
+    // (drop min-w-max + nowrap so columns shrink and text wraps instead of
+    // getting clipped beyond the visible bubble).
     return (
-      <div className="my-3 max-w-full overflow-x-auto rounded-lg border border-primary-200 shadow-sm">
-        <table className="w-full min-w-max border-collapse text-sm tabular-nums">
+      <div className="my-3 w-full max-w-full overflow-x-auto rounded-lg border border-primary-200 shadow-sm">
+        <table className="w-full border-collapse text-sm tabular-nums">
           {children}
         </table>
       </div>
@@ -225,14 +261,16 @@ const INITIAL_COMPONENTS: Partial<Components> = {
   },
   th: function ThComponent({ children }) {
     return (
-      <th className="px-3 py-2 text-left text-[11px] font-semibold tracking-wide text-primary-700 uppercase whitespace-nowrap">
+      <th className="px-3 py-2 text-left text-[11px] font-semibold tracking-wide text-primary-700 uppercase break-words">
         {children}
       </th>
     )
   },
   td: function TdComponent({ children }) {
     return (
-      <td className="px-3 py-2 align-top text-primary-950">{children}</td>
+      <td className="px-3 py-2 align-top text-primary-950 break-words">
+        {children}
+      </td>
     )
   },
   tfoot: function TfootComponent({ children }) {
