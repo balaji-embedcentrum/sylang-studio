@@ -1050,7 +1050,7 @@ export function ChatScreen({
         setSending(false)
         if (isMissingAuth(messageText)) {
           try {
-            navigate({ to: '/', replace: true })
+            navigate({ to: '/', replace: true, search: { error: undefined } })
           } catch {
             /* router not ready */
           }
@@ -1545,7 +1545,7 @@ export function ChatScreen({
       return
     }
     if (isMissingAuth(messageText)) {
-      navigate({ to: '/', replace: true })
+      navigate({ to: '/', replace: true, search: { error: undefined } })
     }
     const message = sessionsError
       ? `Failed to load sessions. ${sessionsError}`
