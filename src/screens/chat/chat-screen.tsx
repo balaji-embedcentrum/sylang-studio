@@ -447,12 +447,26 @@ function shouldCollapseTextDuplicate(
  */
 const RECENT_ASSISTANT_WINDOW = 5
 
-function normalizeForDedup(message: ChatMessage): string {
-  return textFromMessage(message)
+/**
+ * Shared text normalizer used by both the streaming-placeholder duplicate
+ * check (PR #30) and the render-layer assistant dedup (PR #33). Same input
+ * → same comparable string so the two layers agree on what counts as a
+ * verbatim repeat:
+ *   - markdown bold markers stripped (`**x**` vs `<strong>x</strong>` post-render)
+ *   - common zero-width chars stripped (BOM, joiners, word joiner)
+ *   - runs of any whitespace collapsed to a single space
+ *   - leading / trailing whitespace removed
+ */
+function normalizeChatText(text: string): string {
+  return text
     .replace(/\*\*/g, '')
-    .replace(/[​-‍﻿]/g, '')
+    .replace(/[​-‍⁠﻿]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+function normalizeForDedup(message: ChatMessage): string {
+  return normalizeChatText(textFromMessage(message))
 }
 
 function collapseAdjacentAssistantDuplicates(
@@ -1288,25 +1302,31 @@ export function ChatScreen({
       phase: toolCall.phase,
     }))
 
-    // Defensive: if the live streaming text is character-for-character
-    // identical to the most recent prior assistant message, the agent or
-    // SSE layer is replaying that message as the new run's first chunk
-    // (a server-side race we can't fix from here). Suppress the duplicate
-    // text in the placeholder — the typing indicator stays so the user
-    // still sees we're working on the new turn — and let the real new
-    // text overwrite it as the stream progresses.
-    const lastAssistantText = (() => {
+    // Defensive: if the live streaming text matches the most recent prior
+    // assistant message (after the same normalization we use for the render
+    // dedup — markdown markers stripped, zero-width chars stripped, whitespace
+    // collapsed), the agent or SSE layer is replaying that message as the new
+    // run's first chunk. Suppress the duplicate text in the placeholder so
+    // the user doesn't see the prior reply repeated under their new question
+    // while waiting for the real new chunks.
+    //
+    // Earlier this check used a bare trim() which missed cases where the
+    // replayed text differed by a single markdown marker or a zero-width
+    // char from the stored copy — letting the duplicate leak through.
+    const lastAssistantNormalized = (() => {
       for (let i = deduped.length - 1; i >= 0; i--) {
         const msg = deduped[i]
         if (msg.role !== 'assistant') continue
-        return textFromMessage(msg).trim()
+        return normalizeChatText(textFromMessage(msg))
       }
       return ''
     })()
-    const trimmedStreamingText = (activeRealtimeStreamingText ?? '').trim()
+    const normalizedStreamingText = normalizeChatText(
+      activeRealtimeStreamingText ?? '',
+    )
     const streamingTextIsDuplicate =
-      trimmedStreamingText.length > 20 &&
-      trimmedStreamingText === lastAssistantText
+      normalizedStreamingText.length > 20 &&
+      normalizedStreamingText === lastAssistantNormalized
     const effectiveStreamingText = streamingTextIsDuplicate
       ? ''
       : activeRealtimeStreamingText
