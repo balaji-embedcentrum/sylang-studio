@@ -532,6 +532,9 @@ export function ChatScreen({
   )
   const { renameSession, renaming: renamingSessionTitle } = useRenameSession()
   const sseConnectionState = useChatStore((s) => s.connectionState)
+  const clearStoreStreamingSession = useChatStore(
+    (s) => s.clearStreamingSession,
+  )
 
   const {
     sessionsQuery,
@@ -1047,7 +1050,7 @@ export function ChatScreen({
         setSending(false)
         if (isMissingAuth(messageText)) {
           try {
-            navigate({ to: '/', replace: true })
+            navigate({ to: '/', replace: true, search: { error: undefined } })
           } catch {
             /* router not ready */
           }
@@ -1542,7 +1545,7 @@ export function ChatScreen({
       return
     }
     if (isMissingAuth(messageText)) {
-      navigate({ to: '/', replace: true })
+      navigate({ to: '/', replace: true, search: { error: undefined } })
     }
     const message = sessionsError
       ? `Failed to load sessions. ${sessionsError}`
@@ -1731,6 +1734,10 @@ export function ChatScreen({
       setSending(true)
       setError(null)
       clearCompletedStreaming()
+      // Defensive: drop any lingering chat-store streaming state for this
+      // session before the new run starts. Prevents prior run's tool pills /
+      // progress events from rendering during the gap before the first chunk.
+      clearStoreStreamingSession(sessionKey)
       setWaitingForResponse(true)
       activeSendRef.current = {
         sessionKey,
@@ -2623,12 +2630,20 @@ export function ChatScreen({
               streamingMessageId={derivedStreamingInfo.streamingMessageId}
               streamingText={
                 stableActiveStreamingText ||
-                completedStreamingText.current ||
+                // Only fall back to the previous run's completed text while
+                // truly idle (handoff window between 'done' and history paint).
+                // Suppress it the instant a new send starts so the prior
+                // response can't render as the new run's streaming bubble.
+                (!sending && !waitingForResponse
+                  ? completedStreamingText.current
+                  : '') ||
                 undefined
               }
               streamingThinking={
                 realtimeStreamingThinking ||
-                completedStreamingThinking.current ||
+                (!sending && !waitingForResponse
+                  ? completedStreamingThinking.current
+                  : '') ||
                 undefined
               }
               lifecycleEvents={realtimeLifecycleEvents}
