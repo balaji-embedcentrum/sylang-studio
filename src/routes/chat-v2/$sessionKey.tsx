@@ -1,56 +1,53 @@
 /**
- * Route /chat-v2/$sessionKey — feature-flagged side-by-side route for the
- * assistant-ui-based chat rewrite. Once chat-v2 reaches feature parity with
- * the legacy /chat/$sessionKey route, this becomes the default and the old
- * route + screens/chat directory are deleted.
+ * Route /chat-v2/$sessionKey — TEMP DIAGNOSTIC.
+ *
+ * The hand-rolled chat is rendering blank in the user's browser even though
+ * the route is registered and Vite serves the file. Replace the lazy import
+ * with a synchronous, single-component render of a static "hello" page so we
+ * can confirm the route itself is reachable. If THIS renders, the issue is
+ * in the chat-screen-v2 module. If even THIS is blank, the issue is upstream
+ * (workspace shell, auth gate, hydration, etc).
+ *
+ * Once we know which, the real ChatScreenV2 component comes back.
  */
 
 import { createFileRoute } from '@tanstack/react-router'
-import { Suspense, lazy, useEffect, useState } from 'react'
-import { ErrorBoundary } from '@/components/error-boundary'
-
-const ChatScreenV2 = lazy(async () => {
-  const mod = await import('../../screens/chat-v2/chat-screen-v2')
-  return { default: mod.ChatScreenV2 }
-})
 
 export const Route = createFileRoute('/chat-v2/$sessionKey')({
-  component: ChatV2Route,
+  component: ChatV2DiagnosticRoute,
   ssr: false,
 })
 
-function ChatV2Route() {
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-
+function ChatV2DiagnosticRoute() {
   const params = Route.useParams()
-  const activeFriendlyId =
-    typeof params.sessionKey === 'string' ? params.sessionKey : 'main'
-
-  if (!mounted) {
-    return (
-      <div className="flex h-full items-center justify-center text-primary-400">
-        Loading chat-v2…
-      </div>
-    )
-  }
+  const sessionKey =
+    typeof params.sessionKey === 'string' ? params.sessionKey : 'unknown'
 
   return (
-    <ErrorBoundary>
-      <Suspense
-        fallback={
-          <div className="flex h-full items-center justify-center text-primary-400">
-            Loading chat-v2…
-          </div>
-        }
-      >
-        <div className="h-full min-h-0">
-          <ChatScreenV2
-            sessionKey={activeFriendlyId}
-            friendlyId={activeFriendlyId}
-          />
-        </div>
-      </Suspense>
-    </ErrorBoundary>
+    <div
+      style={{
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#fafafa',
+        color: '#111',
+        padding: '2rem',
+      }}
+    >
+      <div style={{ maxWidth: 480, textAlign: 'center' }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+        <h1 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
+          chat-v2 route is reachable
+        </h1>
+        <p style={{ fontSize: 13, color: '#555' }}>
+          session: <code>{sessionKey}</code>
+        </p>
+        <p style={{ fontSize: 12, color: '#888', marginTop: 16 }}>
+          If you see this card but the real chat was blank before, the bug is
+          in <code>chat-screen-v2.tsx</code>, not the route or the shell.
+        </p>
+      </div>
+    </div>
   )
 }
