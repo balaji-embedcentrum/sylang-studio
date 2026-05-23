@@ -54,7 +54,7 @@ function TermsPage() {
             }}
           >
             <img
-              src="/hermes-crest.svg"
+              src="/sylang-logo.svg"
               alt="Sylang Studio"
               style={{ width: 26, height: 26 }}
             />

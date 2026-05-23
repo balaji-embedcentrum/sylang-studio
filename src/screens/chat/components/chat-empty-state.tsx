@@ -55,7 +55,7 @@ export function ChatEmptyState({
             }}
           />
           <img
-            src="/hermes-crest.svg"
+            src="/sylang-logo.svg"
             alt="Sylang Studio"
             className="relative size-20 rounded-2xl"
             style={{
