@@ -15,7 +15,6 @@ import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/chat-v2/$sessionKey')({
   component: ChatV2DiagnosticRoute,
-  ssr: false,
 })
 
 function ChatV2DiagnosticRoute() {
