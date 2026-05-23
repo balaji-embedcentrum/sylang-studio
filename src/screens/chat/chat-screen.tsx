@@ -1224,6 +1224,29 @@ export function ChatScreen({
       phase: toolCall.phase,
     }))
 
+    // Defensive: if the live streaming text is character-for-character
+    // identical to the most recent prior assistant message, the agent or
+    // SSE layer is replaying that message as the new run's first chunk
+    // (a server-side race we can't fix from here). Suppress the duplicate
+    // text in the placeholder — the typing indicator stays so the user
+    // still sees we're working on the new turn — and let the real new
+    // text overwrite it as the stream progresses.
+    const lastAssistantText = (() => {
+      for (let i = deduped.length - 1; i >= 0; i--) {
+        const msg = deduped[i]
+        if (msg.role !== 'assistant') continue
+        return textFromMessage(msg).trim()
+      }
+      return ''
+    })()
+    const trimmedStreamingText = (activeRealtimeStreamingText ?? '').trim()
+    const streamingTextIsDuplicate =
+      trimmedStreamingText.length > 20 &&
+      trimmedStreamingText === lastAssistantText
+    const effectiveStreamingText = streamingTextIsDuplicate
+      ? ''
+      : activeRealtimeStreamingText
+
     // Key the placeholder by runId so each new send gets a fresh MessageItem
     // instance. Reusing a constant key ('streaming-current') caused React to
     // keep the previous run's MessageItem alive, including its useState
@@ -1235,7 +1258,7 @@ export function ChatScreen({
       content: [],
       __optimisticId: streamingPlaceholderId,
       __streamingStatus: 'streaming',
-      __streamingText: activeRealtimeStreamingText,
+      __streamingText: effectiveStreamingText,
       __streamingThinking: realtimeStreamingThinking,
       __streamToolCalls: streamToolCalls,
     } as ChatMessage
