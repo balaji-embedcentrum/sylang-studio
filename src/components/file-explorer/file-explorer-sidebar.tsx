@@ -731,21 +731,38 @@ export function FileExplorerSidebar({
             <div className="px-3 py-2 text-xs text-primary-500">Loading…</div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center gap-3 px-4 py-8 text-center">
-              <div className="flex size-10 items-center justify-center rounded-xl border border-primary-200 bg-primary-100/60">
+              <div className="flex size-10 items-center justify-center rounded-xl border border-red-200 bg-red-50">
                 <HugeiconsIcon
                   icon={Folder01Icon}
                   size={20}
                   strokeWidth={1.5}
-                  className="text-primary-500"
+                  className="text-red-500"
                 />
               </div>
               <div>
                 <p className="text-sm font-medium text-primary-800">
-                  No workspace selected
+                  {initialPath
+                    ? 'Could not load workspace files'
+                    : 'No workspace selected'}
                 </p>
                 <p className="mt-1 text-xs text-primary-500 text-pretty">
-                  Select a folder to browse and edit files.
+                  {initialPath
+                    ? 'The agent could not return a file tree for this workspace. The directory may have been moved, deleted, or never created.'
+                    : 'Select a folder to browse and edit files.'}
                 </p>
+                {initialPath && (
+                  <p className="mt-2 font-mono text-[10px] text-primary-400 break-all">
+                    {initialPath}
+                  </p>
+                )}
+                {initialPath && (
+                  <p
+                    className="mt-2 text-[11px] text-red-600 break-words"
+                    title={error}
+                  >
+                    {error.slice(0, 200)}
+                  </p>
+                )}
               </div>
               <Button
                 size="sm"
@@ -769,11 +786,20 @@ export function FileExplorerSidebar({
               </div>
               <div>
                 <p className="text-sm font-medium text-primary-800">
-                  Workspace is empty
+                  {initialPath
+                    ? 'Workspace is empty'
+                    : 'No workspace selected'}
                 </p>
                 <p className="mt-1 text-xs text-primary-500 text-pretty">
-                  Create files or upload content to get started.
+                  {initialPath
+                    ? 'The agent reported this workspace exists but contains no files. Create a file or upload content to start.'
+                    : 'Select a folder to browse and edit files.'}
                 </p>
+                {initialPath && (
+                  <p className="mt-2 font-mono text-[10px] text-primary-400 break-all">
+                    {initialPath}
+                  </p>
+                )}
               </div>
               <div className="flex gap-2">
                 <Button
@@ -793,6 +819,14 @@ export function FileExplorerSidebar({
                 >
                   <HugeiconsIcon icon={Upload01Icon} size={16} />
                   Upload
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={refresh}
+                  title="Re-query the agent"
+                >
+                  <HugeiconsIcon icon={RefreshIcon} size={16} />
                 </Button>
               </div>
             </div>
