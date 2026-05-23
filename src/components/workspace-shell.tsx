@@ -27,6 +27,7 @@ import { useSwipeNavigation } from '@/hooks/use-swipe-navigation'
 import { ChatPanel } from '@/components/chat-panel'
 import { ChatPanelToggle } from '@/components/chat-panel-toggle'
 import { useSessionActivity } from '@/hooks/use-session-activity'
+import { useResetChatOnContextChange } from '@/hooks/use-reset-chat-on-context-change'
 import { LoginScreen } from '@/components/auth/login-screen'
 import { MobileTabBar } from '@/components/mobile-tab-bar'
 import { MobileHamburgerMenu } from '@/components/mobile-hamburger-menu'
@@ -62,6 +63,7 @@ async function fetchSessions(): Promise<SessionsListResponse> {
 
 export function WorkspaceShell() {
   useSessionActivity() // Track activity for idle timeout
+  useResetChatOnContextChange() // Force /chat/new when project or agent switches
   const navigate = useNavigate()
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
