@@ -57,6 +57,7 @@ import { Route as ApiAuthCheckRouteImport } from './routes/api/auth-check'
 import { Route as ApiAuthRouteImport } from './routes/api/auth'
 import { Route as ApiWorkspacesOpenRouteImport } from './routes/api/workspaces/open'
 import { Route as ApiWorkspacesListRouteImport } from './routes/api/workspaces/list'
+import { Route as ApiWorkspacesDeleteRouteImport } from './routes/api/workspaces/delete'
 import { Route as ApiWorkspacesCreateRouteImport } from './routes/api/workspaces/create'
 import { Route as ApiWorkspacesCloneRouteImport } from './routes/api/workspaces/clone'
 import { Route as ApiSylangVariantMatrixRouteImport } from './routes/api/sylang/variant-matrix'
@@ -346,6 +347,11 @@ const ApiWorkspacesOpenRoute = ApiWorkspacesOpenRouteImport.update({
 const ApiWorkspacesListRoute = ApiWorkspacesListRouteImport.update({
   id: '/api/workspaces/list',
   path: '/api/workspaces/list',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkspacesDeleteRoute = ApiWorkspacesDeleteRouteImport.update({
+  id: '/api/workspaces/delete',
+  path: '/api/workspaces/delete',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWorkspacesCreateRoute = ApiWorkspacesCreateRouteImport.update({
@@ -697,6 +703,7 @@ export interface FileRoutesByFullPath {
   '/api/sylang/variant-matrix': typeof ApiSylangVariantMatrixRoute
   '/api/workspaces/clone': typeof ApiWorkspacesCloneRoute
   '/api/workspaces/create': typeof ApiWorkspacesCreateRoute
+  '/api/workspaces/delete': typeof ApiWorkspacesDeleteRoute
   '/api/workspaces/list': typeof ApiWorkspacesListRoute
   '/api/workspaces/open': typeof ApiWorkspacesOpenRoute
   '/api/sessions/$sessionKey/active-run': typeof ApiSessionsSessionKeyActiveRunRoute
@@ -796,6 +803,7 @@ export interface FileRoutesByTo {
   '/api/sylang/variant-matrix': typeof ApiSylangVariantMatrixRoute
   '/api/workspaces/clone': typeof ApiWorkspacesCloneRoute
   '/api/workspaces/create': typeof ApiWorkspacesCreateRoute
+  '/api/workspaces/delete': typeof ApiWorkspacesDeleteRoute
   '/api/workspaces/list': typeof ApiWorkspacesListRoute
   '/api/workspaces/open': typeof ApiWorkspacesOpenRoute
   '/api/sessions/$sessionKey/active-run': typeof ApiSessionsSessionKeyActiveRunRoute
@@ -897,6 +905,7 @@ export interface FileRoutesById {
   '/api/sylang/variant-matrix': typeof ApiSylangVariantMatrixRoute
   '/api/workspaces/clone': typeof ApiWorkspacesCloneRoute
   '/api/workspaces/create': typeof ApiWorkspacesCreateRoute
+  '/api/workspaces/delete': typeof ApiWorkspacesDeleteRoute
   '/api/workspaces/list': typeof ApiWorkspacesListRoute
   '/api/workspaces/open': typeof ApiWorkspacesOpenRoute
   '/api/sessions/$sessionKey/active-run': typeof ApiSessionsSessionKeyActiveRunRoute
@@ -999,6 +1008,7 @@ export interface FileRouteTypes {
     | '/api/sylang/variant-matrix'
     | '/api/workspaces/clone'
     | '/api/workspaces/create'
+    | '/api/workspaces/delete'
     | '/api/workspaces/list'
     | '/api/workspaces/open'
     | '/api/sessions/$sessionKey/active-run'
@@ -1098,6 +1108,7 @@ export interface FileRouteTypes {
     | '/api/sylang/variant-matrix'
     | '/api/workspaces/clone'
     | '/api/workspaces/create'
+    | '/api/workspaces/delete'
     | '/api/workspaces/list'
     | '/api/workspaces/open'
     | '/api/sessions/$sessionKey/active-run'
@@ -1198,6 +1209,7 @@ export interface FileRouteTypes {
     | '/api/sylang/variant-matrix'
     | '/api/workspaces/clone'
     | '/api/workspaces/create'
+    | '/api/workspaces/delete'
     | '/api/workspaces/list'
     | '/api/workspaces/open'
     | '/api/sessions/$sessionKey/active-run'
@@ -1284,6 +1296,7 @@ export interface RootRouteChildren {
   ApiSylangVariantMatrixRoute: typeof ApiSylangVariantMatrixRoute
   ApiWorkspacesCloneRoute: typeof ApiWorkspacesCloneRoute
   ApiWorkspacesCreateRoute: typeof ApiWorkspacesCreateRoute
+  ApiWorkspacesDeleteRoute: typeof ApiWorkspacesDeleteRoute
   ApiWorkspacesListRoute: typeof ApiWorkspacesListRoute
   ApiWorkspacesOpenRoute: typeof ApiWorkspacesOpenRoute
 }
@@ -1624,6 +1637,13 @@ declare module '@tanstack/react-router' {
       path: '/api/workspaces/list'
       fullPath: '/api/workspaces/list'
       preLoaderRoute: typeof ApiWorkspacesListRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workspaces/delete': {
+      id: '/api/workspaces/delete'
+      path: '/api/workspaces/delete'
+      fullPath: '/api/workspaces/delete'
+      preLoaderRoute: typeof ApiWorkspacesDeleteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/workspaces/create': {
@@ -2152,6 +2172,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSylangVariantMatrixRoute: ApiSylangVariantMatrixRoute,
   ApiWorkspacesCloneRoute: ApiWorkspacesCloneRoute,
   ApiWorkspacesCreateRoute: ApiWorkspacesCreateRoute,
+  ApiWorkspacesDeleteRoute: ApiWorkspacesDeleteRoute,
   ApiWorkspacesListRoute: ApiWorkspacesListRoute,
   ApiWorkspacesOpenRoute: ApiWorkspacesOpenRoute,
 }
