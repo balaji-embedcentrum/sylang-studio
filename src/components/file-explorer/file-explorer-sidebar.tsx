@@ -110,7 +110,7 @@ async function fetchFileTree(dirPath = '', localAgentUrl?: string | null, worksp
   const url = dirPath
     ? `/api/files?action=list&path=${encodeURIComponent(dirPath)}`
     : '/api/files?action=list'
-  const res = await fetch(url)
+  const res = await fetch(url, { cache: 'no-store' })
   if (!res.ok) throw new Error('Failed to load files')
   const data = (await res.json()) as { entries?: Array<FileEntry> }
   return Array.isArray(data.entries) ? data.entries : []
@@ -165,12 +165,60 @@ export function FileExplorerSidebar({
   const [syncing, setSyncing] = useState(false)
   const localAgentUrl = useWorkspaceStore(s => s.localHermesUrl)
 
+  // Mirror `expanded` in a ref so `refresh` can re-fetch open folders without
+  // depending on the Set itself (which would re-fire the mount useEffect on every toggle).
+  const expandedRef = useRef(expanded)
+  useEffect(() => {
+    expandedRef.current = expanded
+  }, [expanded])
+
   const refresh = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const nextEntries = await fetchFileTree(initialPath, localAgentUrl, initialPath)
-      setEntries(nextEntries)
+      const rootEntries = await fetchFileTree(initialPath, localAgentUrl, initialPath)
+
+      // Re-fetch children for every currently-expanded folder so the visible
+      // subtree reflects the latest workspace state, not the last-loaded snapshot.
+      const expandedPaths = Array.from(expandedRef.current)
+      const childrenByPath = new Map<string, Array<FileEntry>>()
+      await Promise.all(
+        expandedPaths.map(async (p) => {
+          try {
+            const children = await fetchFileTree(p, localAgentUrl, initialPath)
+            childrenByPath.set(p, children)
+          } catch {
+            // Folder may have been deleted — leave it out; we'll prune below.
+          }
+        }),
+      )
+
+      const graft = (es: Array<FileEntry>): Array<FileEntry> =>
+        es.map((entry) => {
+          if (entry.type !== 'folder') return entry
+          const children = childrenByPath.get(entry.path)
+          if (children === undefined) return entry
+          return { ...entry, children: graft(children) }
+        })
+
+      const nextTree = graft(rootEntries)
+      setEntries(nextTree)
+
+      // Prune `expanded` of paths that no longer exist in the refreshed tree.
+      const livePaths = new Set<string>()
+      const collect = (es: Array<FileEntry>) => {
+        for (const e of es) {
+          livePaths.add(e.path)
+          if (e.children) collect(e.children)
+        }
+      }
+      collect(nextTree)
+      setExpanded((prev) => {
+        const next = new Set<string>()
+        for (const p of prev) if (livePaths.has(p)) next.add(p)
+        return next.size === prev.size ? prev : next
+      })
+      setLoadingFolders((prev) => (prev.size === 0 ? prev : new Set()))
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
