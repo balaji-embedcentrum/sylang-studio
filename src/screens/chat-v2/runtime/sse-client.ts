@@ -20,6 +20,15 @@ export type AgentEvent = {
   data: Record<string, unknown>
 }
 
+export type ChatAttachmentPayload = {
+  id: string
+  name: string
+  contentType: string
+  size: number
+  /** Full data: URL with base64-encoded content. The server strips the prefix. */
+  dataUrl: string
+}
+
 export type SendStreamParams = {
   sessionKey: string
   friendlyId: string
@@ -31,6 +40,7 @@ export type SendStreamParams = {
   workspacePath?: string
   localAgentUrl?: string
   localWorkspaceRoot?: string
+  attachments?: Array<ChatAttachmentPayload>
   signal?: AbortSignal
 }
 

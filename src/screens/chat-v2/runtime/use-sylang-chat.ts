@@ -7,7 +7,22 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { streamAgentEvents, type AgentEvent } from './sse-client'
+import {
+  streamAgentEvents,
+  type AgentEvent,
+  type ChatAttachmentPayload,
+} from './sse-client'
+
+export type Attachment = {
+  id: string
+  name: string
+  contentType: string
+  size: number
+  /** data:<mime>;base64,<...> — what the server expects in the dataUrl field */
+  dataUrl: string
+  /** Is this an image we should preview inline in the user bubble? */
+  isImage: boolean
+}
 
 export type ChatRole = 'user' | 'assistant'
 
@@ -29,6 +44,7 @@ export type ChatMessage = {
   id: string
   role: ChatRole
   parts: Array<Part>
+  attachments?: Array<Attachment>
   /** true while the assistant message is still streaming */
   streaming?: boolean
   /** wall-clock when the message was first added to the list */
@@ -158,16 +174,18 @@ export function useSylangChat(options: Options) {
   )
 
   const send = useCallback(
-    async (text: string) => {
+    async (text: string, attachments?: Array<Attachment>) => {
       const trimmed = text.trim()
-      if (!trimmed) return
+      const hasAttachments = Array.isArray(attachments) && attachments.length > 0
+      if (!trimmed && !hasAttachments) return
       if (status === 'sending' || status === 'streaming') return
 
       setError(null)
       const userMessage: ChatMessage = {
         id: makeId(),
         role: 'user',
-        parts: [{ type: 'text', text: trimmed }],
+        parts: trimmed ? [{ type: 'text', text: trimmed }] : [],
+        attachments: hasAttachments ? attachments : undefined,
         createdAt: Date.now(),
       }
       const assistantId = makeId()
@@ -186,6 +204,16 @@ export function useSylangChat(options: Options) {
       abortRef.current = abort
 
       try {
+        const ssePayload: Array<ChatAttachmentPayload> | undefined =
+          hasAttachments
+            ? attachments.map((a) => ({
+                id: a.id,
+                name: a.name,
+                contentType: a.contentType,
+                size: a.size,
+                dataUrl: a.dataUrl,
+              }))
+            : undefined
         const stream = streamAgentEvents({
           sessionKey: optionsRef.current.sessionKey,
           friendlyId: optionsRef.current.friendlyId,
@@ -194,6 +222,7 @@ export function useSylangChat(options: Options) {
           workspacePath: optionsRef.current.workspacePath,
           localAgentUrl: optionsRef.current.localAgentUrl,
           localWorkspaceRoot: optionsRef.current.localWorkspaceRoot,
+          attachments: ssePayload,
           signal: abort.signal,
         })
         let sawAnyData = false
