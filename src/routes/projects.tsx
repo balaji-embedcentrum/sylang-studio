@@ -735,6 +735,20 @@ function ProjectsPage() {
                     Cancel
                   </button>
                 </div>
+                {!localHermesUrl && !newProjectError && (
+                  <p
+                    className="mt-2 text-xs"
+                    style={{ color: 'var(--theme-muted)' }}
+                  >
+                    A private GitHub repo will be created at{' '}
+                    <span className="font-mono">
+                      github.com/{githubLogin ?? 'you'}/
+                      {newProjectName.trim().replace(/[^a-zA-Z0-9_-]/g, '_') ||
+                        '...'}
+                    </span>{' '}
+                    and cloned to your workspace.
+                  </p>
+                )}
                 {newProjectError && (
                   <div
                     className="mt-2 px-3 py-2 rounded-lg text-xs"
