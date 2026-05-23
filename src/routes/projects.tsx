@@ -22,6 +22,8 @@ type LocalWorkspace = {
   name: string
   path: string
   lastAccessed?: string
+  /** Supabase workspaces.id — present in remote mode, absent in local mode. */
+  id?: string
 }
 
 type PlaygroundProject = {
@@ -59,6 +61,9 @@ function ProjectsPage() {
   const [hasAgent, setHasAgent] = useState(true) // optimistic, checked on load
   const [localWorkspaces, setLocalWorkspaces] = useState<LocalWorkspace[]>([])
   const [localLoading, setLocalLoading] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [newProjectName, setNewProjectName] = useState('')
   const [showNewProject, setShowNewProject] = useState(false)
   const [playground, setPlayground] = useState<PlaygroundProject[]>([])
@@ -135,8 +140,9 @@ function ProjectsPage() {
       // Remote mode: fetch from Supabase via server API
       fetch('/api/workspaces/list')
         .then(r => r.json())
-        .then((data: { workspaces?: Array<{ repo_full: string; workspace_path: string; last_accessed: string | null }> }) => {
+        .then((data: { workspaces?: Array<{ id: string; repo_full: string; workspace_path: string; last_accessed: string | null }> }) => {
           const ws = (data.workspaces ?? []).map(w => ({
+            id: w.id,
             name: w.repo_full,
             path: w.workspace_path,
             lastAccessed: w.last_accessed ?? undefined,
@@ -194,6 +200,41 @@ function ProjectsPage() {
         }
       }
     } catch { /* ignore */ }
+  }
+
+  // Permanently delete a cloned repo — removes the directory on the agent's
+  // filesystem (and, in remote mode, the Supabase workspace record).
+  const handleDeleteWorkspace = async (ws: LocalWorkspace) => {
+    setDeleteError(null)
+    setDeleting(ws.path)
+    try {
+      if (localHermesUrl) {
+        // Local mode: delete directly via the local agent. `path=.` resolves
+        // to the repo root, so the agent rmtree's the whole directory.
+        const repoName = ws.name.split('/').pop() ?? ws.name
+        const res = await fetch(
+          `${localHermesUrl}/ws/${encodeURIComponent(repoName)}/file?path=.`,
+          { method: 'DELETE', signal: AbortSignal.timeout(30_000) },
+        )
+        if (!res.ok && res.status !== 404) throw new Error(`Agent returned ${res.status}`)
+      } else {
+        // Remote mode: delete via server API (verifies ownership, drops record).
+        if (!ws.id) throw new Error('Missing workspace id')
+        const res = await fetch('/api/workspaces/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workspace_id: ws.id }),
+        })
+        const data = (await res.json()) as { ok?: boolean; error?: string }
+        if (!res.ok || !data.ok) throw new Error(data.error ?? 'Delete failed')
+      }
+      setLocalWorkspaces(list => list.filter(w => w.path !== ws.path))
+      setConfirmDelete(null)
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : 'Failed to delete repo')
+    } finally {
+      setDeleting(null)
+    }
   }
 
   const filtered = repos.filter(
@@ -671,25 +712,68 @@ function ProjectsPage() {
               </p>
             )}
 
+            {deleteError && (
+              <div className="rounded-xl px-4 py-3 mb-3 text-sm" style={{ background: '#3f0f0f', color: '#f87171' }}>
+                {deleteError}
+              </div>
+            )}
+
             <div className="space-y-2">
-              {localWorkspaces.map((ws) => (
-                <button
-                  key={ws.path}
-                  onClick={() => navigate({ to: '/files', search: { path: ws.path } })}
-                  className="w-full text-left rounded-xl px-4 py-4 transition-colors"
-                  style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--theme-accent)' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--theme-border)' }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg">📁</span>
-                      <span className="font-medium text-sm" style={{ color: 'var(--theme-text)' }}>{ws.name}</span>
+              {localWorkspaces.map((ws) => {
+                const isConfirming = confirmDelete === ws.path
+                const isDeleting = deleting === ws.path
+                return (
+                  <div
+                    key={ws.path}
+                    className="w-full flex items-center rounded-xl transition-colors"
+                    style={{ background: 'var(--theme-card)', border: '1px solid var(--theme-border)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--theme-accent)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--theme-border)' }}
+                  >
+                    <button
+                      onClick={() => navigate({ to: '/files', search: { path: ws.path } })}
+                      className="flex-1 min-w-0 text-left px-4 py-4"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">📁</span>
+                        <span className="font-medium text-sm truncate" style={{ color: 'var(--theme-text)' }}>{ws.name}</span>
+                      </div>
+                    </button>
+                    <div className="shrink-0 flex items-center gap-1.5 pr-3">
+                      {isConfirming ? (
+                        <>
+                          <span className="text-xs mr-1" style={{ color: 'var(--theme-muted)' }}>Delete repo?</span>
+                          <button
+                            onClick={() => handleDeleteWorkspace(ws)}
+                            disabled={isDeleting}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                            style={{ background: '#dc2626', color: '#fff', opacity: isDeleting ? 0.6 : 1 }}
+                          >
+                            {isDeleting ? 'Deleting…' : 'Confirm'}
+                          </button>
+                          <button
+                            onClick={() => setConfirmDelete(null)}
+                            disabled={isDeleting}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-medium"
+                            style={{ background: 'var(--theme-card2)', color: 'var(--theme-muted)' }}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => { setDeleteError(null); setConfirmDelete(ws.path) }}
+                          title="Delete cloned repo"
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                          style={{ color: '#f87171' }}
+                        >
+                          Delete
+                        </button>
+                      )}
                     </div>
-                    <span className="text-xs" style={{ color: 'var(--theme-muted)' }}>Local</span>
                   </div>
-                </button>
-              ))}
+                )
+              })}
             </div>
           </>
         )}
