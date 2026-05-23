@@ -27,6 +27,7 @@ import { Route as ChatIndexRouteImport } from './routes/chat/index'
 import { Route as SettingsProvidersRouteImport } from './routes/settings/providers'
 import { Route as SettingsMcpRouteImport } from './routes/settings/mcp'
 import { Route as ChatSessionKeyRouteImport } from './routes/chat/$sessionKey'
+import { Route as ChatV2SessionKeyRouteImport } from './routes/chat-v2/$sessionKey'
 import { Route as ApiWorkspaceRouteImport } from './routes/api/workspace'
 import { Route as ApiTerminalStreamRouteImport } from './routes/api/terminal-stream'
 import { Route as ApiTerminalResizeRouteImport } from './routes/api/terminal-resize'
@@ -197,6 +198,11 @@ const SettingsMcpRoute = SettingsMcpRouteImport.update({
 const ChatSessionKeyRoute = ChatSessionKeyRouteImport.update({
   id: '/chat/$sessionKey',
   path: '/chat/$sessionKey',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatV2SessionKeyRoute = ChatV2SessionKeyRouteImport.update({
+  id: '/chat-v2/$sessionKey',
+  path: '/chat-v2/$sessionKey',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWorkspaceRoute = ApiWorkspaceRouteImport.update({
@@ -650,6 +656,7 @@ export interface FileRoutesByFullPath {
   '/api/terminal-resize': typeof ApiTerminalResizeRoute
   '/api/terminal-stream': typeof ApiTerminalStreamRoute
   '/api/workspace': typeof ApiWorkspaceRoute
+  '/chat-v2/$sessionKey': typeof ChatV2SessionKeyRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/providers': typeof SettingsProvidersRoute
@@ -750,6 +757,7 @@ export interface FileRoutesByTo {
   '/api/terminal-resize': typeof ApiTerminalResizeRoute
   '/api/terminal-stream': typeof ApiTerminalStreamRoute
   '/api/workspace': typeof ApiWorkspaceRoute
+  '/chat-v2/$sessionKey': typeof ChatV2SessionKeyRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/providers': typeof SettingsProvidersRoute
@@ -852,6 +860,7 @@ export interface FileRoutesById {
   '/api/terminal-resize': typeof ApiTerminalResizeRoute
   '/api/terminal-stream': typeof ApiTerminalStreamRoute
   '/api/workspace': typeof ApiWorkspaceRoute
+  '/chat-v2/$sessionKey': typeof ChatV2SessionKeyRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/providers': typeof SettingsProvidersRoute
@@ -955,6 +964,7 @@ export interface FileRouteTypes {
     | '/api/terminal-resize'
     | '/api/terminal-stream'
     | '/api/workspace'
+    | '/chat-v2/$sessionKey'
     | '/chat/$sessionKey'
     | '/settings/mcp'
     | '/settings/providers'
@@ -1055,6 +1065,7 @@ export interface FileRouteTypes {
     | '/api/terminal-resize'
     | '/api/terminal-stream'
     | '/api/workspace'
+    | '/chat-v2/$sessionKey'
     | '/chat/$sessionKey'
     | '/settings/mcp'
     | '/settings/providers'
@@ -1156,6 +1167,7 @@ export interface FileRouteTypes {
     | '/api/terminal-resize'
     | '/api/terminal-stream'
     | '/api/workspace'
+    | '/chat-v2/$sessionKey'
     | '/chat/$sessionKey'
     | '/settings/mcp'
     | '/settings/providers'
@@ -1258,6 +1270,7 @@ export interface RootRouteChildren {
   ApiTerminalResizeRoute: typeof ApiTerminalResizeRoute
   ApiTerminalStreamRoute: typeof ApiTerminalStreamRoute
   ApiWorkspaceRoute: typeof ApiWorkspaceRoute
+  ChatV2SessionKeyRoute: typeof ChatV2SessionKeyRoute
   ChatSessionKeyRoute: typeof ChatSessionKeyRoute
   ChatIndexRoute: typeof ChatIndexRoute
   ApiAgentSessionsEndRoute: typeof ApiAgentSessionsEndRoute
@@ -1427,6 +1440,13 @@ declare module '@tanstack/react-router' {
       path: '/chat/$sessionKey'
       fullPath: '/chat/$sessionKey'
       preLoaderRoute: typeof ChatSessionKeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat-v2/$sessionKey': {
+      id: '/chat-v2/$sessionKey'
+      path: '/chat-v2/$sessionKey'
+      fullPath: '/chat-v2/$sessionKey'
+      preLoaderRoute: typeof ChatV2SessionKeyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/workspace': {
@@ -2134,6 +2154,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTerminalResizeRoute: ApiTerminalResizeRoute,
   ApiTerminalStreamRoute: ApiTerminalStreamRoute,
   ApiWorkspaceRoute: ApiWorkspaceRoute,
+  ChatV2SessionKeyRoute: ChatV2SessionKeyRoute,
   ChatSessionKeyRoute: ChatSessionKeyRoute,
   ChatIndexRoute: ChatIndexRoute,
   ApiAgentSessionsEndRoute: ApiAgentSessionsEndRoute,
@@ -2179,12 +2200,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
