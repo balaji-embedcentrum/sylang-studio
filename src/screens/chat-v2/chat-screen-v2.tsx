@@ -90,7 +90,7 @@ function fileToAttachment(file: File): Promise<Attachment> {
 // users can confirm in devtools whether the deployed bundle contains
 // the latest chat-v2 code (vs. a cached / stale build still serving an
 // older index.html). Bump the version string in PRs that change chat-v2.
-const CHAT_V2_BUILD_TAG = 'chat-v2 build #51 verbose-save-logs'
+const CHAT_V2_BUILD_TAG = 'chat-v2 build #52 lock-unless-session-known'
 let chatV2BuildLogged = false
 
 export function ChatScreenV2(props: Props) {
@@ -217,12 +217,19 @@ function ChatScreenV2Inner({
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const isBusy = status === 'sending' || status === 'streaming'
 
-  // Lock the chat when the user has no active agent session. Mirrors v1's
-  // `noActiveSession = !localHermesUrl && hasCloudSession === false`.
-  // `hasSession` is null during the initial probe — keep the UI enabled
-  // then so the user doesn't see a "locked" flash on page load.
+  // Lock the chat unless the user *positively* has an active agent
+  // session. PR #48's original condition only locked when hasSession was
+  // strictly `false`, leaving the chat enabled during:
+  //   • the initial probe (hasSession === null)
+  //   • a stale prior session that was already ended (hasSession === true
+  //     until useActiveSession re-probes on next focus/realtime)
+  // User reported the panel composer being usable on the /agents page
+  // before any agent was picked. So flip the polarity: lock unless we
+  // positively know a session exists. Probe runs on mount + focus +
+  // realtime / storage events, so the lock clears within a frame of the
+  // session actually being claimed.
   const { hasSession } = useActiveSession()
-  const noActiveSession = !localAgentUrl && hasSession === false
+  const noActiveSession = !localAgentUrl && hasSession !== true
   const composerDisabled = isBusy || noActiveSession
   const navigate = useNavigate()
 
