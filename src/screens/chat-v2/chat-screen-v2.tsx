@@ -7,25 +7,32 @@
  */
 
 import {
+  
+  
+  
+  
+  
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
-  useState,
-  type ChangeEvent,
-  type ClipboardEvent,
-  type DragEvent,
-  type FormEvent,
-  type KeyboardEvent,
+  useState
 } from 'react'
 import {
-  useSylangChat,
-  type Attachment,
-  type ChatMessage,
-  type Part,
+  
+  
+  
+  useSylangChat
 } from './runtime/use-sylang-chat'
 import { useHistoryHydration } from './hooks/use-history-hydration'
 import { SessionsSidebar } from './components/sessions-sidebar'
 import { ToolSection } from './components/tool-section'
+import {
+  snippetFromText,
+  upsertLocalSession,
+} from './runtime/local-sessions'
+import type {Attachment, ChatMessage, Part} from './runtime/use-sylang-chat';
+import type {ChangeEvent, ClipboardEvent, DragEvent, FormEvent, KeyboardEvent} from 'react';
 import { Markdown } from '@/components/prompt-kit/markdown'
 import { cn } from '@/lib/utils'
 
@@ -172,6 +179,42 @@ function ChatScreenV2Inner({
     el.scrollTop = el.scrollHeight
   }, [messages])
 
+  // Mirror this session into the browser-local sidebar index. We derive the
+  // label from the FIRST user message text (so the sidebar reads like the
+  // user's actual prompts) and update lastSnippet from the most recent text
+  // message regardless of role. Runs on every messages change but the upsert
+  // is cheap and the writer dedupes equal updates downstream.
+  useEffect(() => {
+    if (messages.length === 0) return
+    const firstUserText = (() => {
+      for (const m of messages) {
+        if (m.role !== 'user') continue
+        const t = m.parts
+          .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+          .map((p) => p.text)
+          .join('')
+        if (t.trim()) return t
+      }
+      return ''
+    })()
+    const latestText = (() => {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const m = messages[i]
+        const t = m.parts
+          .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+          .map((p) => p.text)
+          .join('')
+        if (t.trim()) return t
+      }
+      return ''
+    })()
+    upsertLocalSession({
+      key: sessionKey,
+      label: firstUserText ? snippetFromText(firstUserText, 60) : undefined,
+      lastSnippet: latestText ? snippetFromText(latestText, 90) : null,
+    })
+  }, [messages, sessionKey])
+
   const ingestFiles = useCallback(async (files: Array<File> | FileList) => {
     setAttachmentError(null)
     const list = Array.from(files)
@@ -201,7 +244,7 @@ function ChatScreenV2Inner({
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault()
-      ;(event.currentTarget.form as HTMLFormElement | null)?.requestSubmit()
+      ;(event.currentTarget.form)?.requestSubmit()
     }
   }
 
@@ -213,8 +256,7 @@ function ChatScreenV2Inner({
   }
 
   const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
-    const items = event.clipboardData?.items
-    if (!items) return
+    const items = event.clipboardData.items
     const files: Array<File> = []
     for (const item of items) {
       if (item.kind === 'file') {
