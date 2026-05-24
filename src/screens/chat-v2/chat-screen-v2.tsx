@@ -23,6 +23,7 @@ import {
   type ChatMessage,
   type Part,
 } from './runtime/use-sylang-chat'
+import { useHistoryHydration } from './hooks/use-history-hydration'
 import { Markdown } from '@/components/prompt-kit/markdown'
 import { cn } from '@/lib/utils'
 
@@ -65,19 +66,61 @@ function fileToAttachment(file: File): Promise<Attachment> {
   })
 }
 
-export function ChatScreenV2({
+export function ChatScreenV2(props: Props) {
+  // Fetch /api/history BEFORE mounting the chat hook so its initial state
+  // already has the previous turns. Avoids the double-render flash you'd
+  // get if we seeded via a post-mount effect.
+  const hydration = useHistoryHydration(props.sessionKey)
+
+  if (hydration.status === 'loading') {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-primary-400">
+        Loading conversation…
+      </div>
+    )
+  }
+
+  // Hard error fetching history — show it but still let the user start
+  // a new conversation (they can recover by sending a message; the agent
+  // session can be rebuilt from scratch).
+  const initialMessages =
+    hydration.status === 'ready' ? hydration.messages : []
+  const hydrationError =
+    hydration.status === 'error' ? hydration.error : null
+
+  // key={sessionKey} forces a clean useSylangChat remount when the
+  // session changes (sessions sidebar in stage 3a will rely on this).
+  return (
+    <ChatScreenV2Inner
+      key={props.sessionKey}
+      {...props}
+      initialMessages={initialMessages}
+      hydrationError={hydrationError}
+    />
+  )
+}
+
+type InnerProps = Props & {
+  initialMessages: Array<ChatMessage>
+  hydrationError: string | null
+}
+
+function ChatScreenV2Inner({
   sessionKey,
   friendlyId,
   workspacePath,
   localAgentUrl,
   localWorkspaceRoot,
-}: Props) {
+  initialMessages,
+  hydrationError,
+}: InnerProps) {
   const { messages, status, error, send, stop } = useSylangChat({
     sessionKey,
     friendlyId,
     workspacePath,
     localAgentUrl,
     localWorkspaceRoot,
+    initialMessages,
   })
   const [input, setInput] = useState('')
   const [pendingAttachments, setPendingAttachments] = useState<
@@ -185,9 +228,9 @@ export function ChatScreenV2({
           </div>
         </div>
       )}
-      {(error || attachmentError) && (
+      {(error || attachmentError || hydrationError) && (
         <div className="border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">
-          {error ?? attachmentError}
+          {error ?? attachmentError ?? `Couldn't load history: ${hydrationError}`}
         </div>
       )}
       <div ref={viewportRef} className="flex-1 overflow-y-auto px-4 py-6">
