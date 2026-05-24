@@ -43,6 +43,13 @@ type Props = {
   workspacePath?: string
   localAgentUrl?: string
   localWorkspaceRoot?: string
+  /**
+   * When provided, clicking a row in the sessions sidebar (or the
+   * "+ New chat" button) calls this instead of routing to
+   * /chat/$sessionKey. Used by the right-side ChatPanel to swap the
+   * panel's active session in place without leaving the editor.
+   */
+  onSelectSession?: (sessionKey: string) => void
 }
 
 function makeAttachmentId() {
@@ -113,6 +120,7 @@ export function ChatScreenV2(props: Props) {
           <SessionsSidebar
             currentSessionKey={props.sessionKey}
             onPick={() => setSidebarOpen(false)}
+            onSelectSession={props.onSelectSession}
           />
         )}
         <div className="flex flex-1 items-center justify-center text-sm text-primary-400">

@@ -31,6 +31,12 @@ type Props = {
   /** Optional callback fired after navigation / action, useful for closing
    *  the sidebar after the user picks a session. */
   onPick?: () => void
+  /**
+   * When provided, picking a session (or starting a new chat) calls this
+   * instead of routing to /chat/$sessionKey. ChatPanel uses it to swap
+   * the panel's active session without leaving the current editor view.
+   */
+  onSelectSession?: (sessionKey: string) => void
 }
 
 function formatRelativeTime(ms: number): string {
@@ -53,20 +59,30 @@ function useLocalSessions(): ReadonlyArray<LocalSession> {
   )
 }
 
-export function SessionsSidebar({ currentSessionKey, onPick }: Props) {
+export function SessionsSidebar({
+  currentSessionKey,
+  onPick,
+  onSelectSession,
+}: Props) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const sessions = useLocalSessions()
 
+  // When onSelectSession is provided, swap the session in place (panel
+  // context). Otherwise route to /chat/$sessionKey (dedicated route).
   const goTo = useCallback(
     (sessionKey: string) => {
-      void navigate({
-        to: '/chat/$sessionKey',
-        params: { sessionKey },
-      })
+      if (onSelectSession) {
+        onSelectSession(sessionKey)
+      } else {
+        void navigate({
+          to: '/chat/$sessionKey',
+          params: { sessionKey },
+        })
+      }
       onPick?.()
     },
-    [navigate, onPick],
+    [navigate, onPick, onSelectSession],
   )
 
   const handleDelete = useCallback(
@@ -83,13 +99,17 @@ export function SessionsSidebar({ currentSessionKey, onPick }: Props) {
       if (sessionKey === currentSessionKey) {
         // We just deleted the open session — bounce to a fresh one.
         const fresh = `s_${Date.now().toString(36)}`
-        void navigate({
-          to: '/chat/$sessionKey',
-          params: { sessionKey: fresh },
-        })
+        if (onSelectSession) {
+          onSelectSession(fresh)
+        } else {
+          void navigate({
+            to: '/chat/$sessionKey',
+            params: { sessionKey: fresh },
+          })
+        }
       }
     },
-    [currentSessionKey, navigate, queryClient],
+    [currentSessionKey, navigate, onSelectSession, queryClient],
   )
 
   const handleNewChat = useCallback(() => {
