@@ -69,6 +69,11 @@ function fileToAttachment(file: File): Promise<Attachment> {
 }
 
 export function ChatScreenV2(props: Props) {
+  // Sessions sidebar is hidden by default — it crowds the chat especially
+  // when chat-v2 is mounted inside the narrow right-side ChatPanel.
+  // Toggle via the header button to bring it in.
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
   // Fetch /api/history BEFORE mounting the chat hook so its initial state
   // already has the previous turns. Avoids the double-render flash you'd
   // get if we seeded via a post-mount effect.
@@ -77,7 +82,12 @@ export function ChatScreenV2(props: Props) {
   if (hydration.status === 'loading') {
     return (
       <div className="flex h-full min-h-0">
-        <SessionsSidebar currentSessionKey={props.sessionKey} />
+        {sidebarOpen && (
+          <SessionsSidebar
+            currentSessionKey={props.sessionKey}
+            onPick={() => setSidebarOpen(false)}
+          />
+        )}
         <div className="flex flex-1 items-center justify-center text-sm text-primary-400">
           Loading conversation…
         </div>
@@ -99,13 +109,20 @@ export function ChatScreenV2(props: Props) {
   // thread.
   return (
     <div className="flex h-full min-h-0">
-      <SessionsSidebar currentSessionKey={props.sessionKey} />
+      {sidebarOpen && (
+        <SessionsSidebar
+          currentSessionKey={props.sessionKey}
+          onPick={() => setSidebarOpen(false)}
+        />
+      )}
       <div className="min-w-0 flex-1">
         <ChatScreenV2Inner
           key={props.sessionKey}
           {...props}
           initialMessages={initialMessages}
           hydrationError={hydrationError}
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={() => setSidebarOpen((v) => !v)}
         />
       </div>
     </div>
@@ -115,6 +132,8 @@ export function ChatScreenV2(props: Props) {
 type InnerProps = Props & {
   initialMessages: Array<ChatMessage>
   hydrationError: string | null
+  sidebarOpen: boolean
+  onToggleSidebar: () => void
 }
 
 function ChatScreenV2Inner({
@@ -125,6 +144,8 @@ function ChatScreenV2Inner({
   localWorkspaceRoot,
   initialMessages,
   hydrationError,
+  sidebarOpen,
+  onToggleSidebar,
 }: InnerProps) {
   const { messages, status, error, send, stop } = useSylangChat({
     sessionKey,
@@ -240,6 +261,19 @@ function ChatScreenV2Inner({
           </div>
         </div>
       )}
+      {/* Slim header: sessions toggle only. The studio shell already has
+       *  its own chat title bar above us, so this stays minimal. */}
+      <div className="flex items-center justify-between border-b border-primary-200/70 bg-white px-2 py-1">
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="rounded px-2 py-1 text-xs text-primary-600 hover:bg-primary-100 hover:text-primary-900"
+          aria-label={sidebarOpen ? 'Hide chat history' : 'Show chat history'}
+          title={sidebarOpen ? 'Hide chat history' : 'Show chat history'}
+        >
+          {sidebarOpen ? '‹ Hide' : '☰ Chats'}
+        </button>
+      </div>
       {(error || attachmentError || hydrationError) && (
         <div className="flex items-center justify-between gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">
           <span className="min-w-0 flex-1">

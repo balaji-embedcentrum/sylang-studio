@@ -57,6 +57,48 @@ function makeId() {
   return `m_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
 }
 
+function decodeBase64Utf8(b64: string): string {
+  // atob → binary string → bytes → UTF-8 decode. Plain atob produces
+  // garbled output for any non-ASCII content, which trips up agents
+  // reading source files with comments / non-Latin characters.
+  try {
+    const binary = atob(b64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    return new TextDecoder('utf-8', { fatal: false }).decode(bytes)
+  } catch {
+    return ''
+  }
+}
+
+function isImageMime(mime: string): boolean {
+  return mime.toLowerCase().startsWith('image/')
+}
+
+/**
+ * Build a string to APPEND to the user's message text containing the
+ * decoded contents of every non-image attachment, wrapped in
+ * <attachment name="..."> blocks. The agent reads these as part of the
+ * user prompt — matches what the legacy chat used to do (see
+ * chat-screen.tsx textBlocks construction). Image attachments still
+ * travel as multimodal image_url parts via the SSE payload.
+ */
+function buildTextAttachmentSuffix(attachments: Array<Attachment>): string {
+  const blocks: Array<string> = []
+  for (const a of attachments) {
+    if (isImageMime(a.contentType)) continue
+    const dataUrl = a.dataUrl || ''
+    let content = ''
+    if (dataUrl.startsWith('data:') && dataUrl.includes(',')) {
+      const b64 = dataUrl.split(',')[1] || ''
+      content = decodeBase64Utf8(b64)
+    }
+    if (!content) continue
+    blocks.push(`\n\n<attachment name="${a.name || 'file'}">\n${content}\n</attachment>`)
+  }
+  return blocks.join('')
+}
+
 type Options = {
   sessionKey: string
   friendlyId: string
@@ -204,6 +246,16 @@ export function useSylangChat(options: Options) {
       abortRef.current = abort
 
       try {
+        // Server-side buildMultimodalContent in send-stream.ts only
+        // routes IMAGE attachments to the agent (as multimodal
+        // image_url parts); text / markdown / source files are
+        // silently dropped. Legacy chat worked around this by
+        // inlining text-file content into the user message body as
+        // <attachment name="..."> XML blocks. Same here so README.md,
+        // .ts, .sylang etc. attachments actually reach the LLM.
+        const enrichedMessage = hasAttachments
+          ? trimmed + buildTextAttachmentSuffix(attachments)
+          : trimmed
         const ssePayload: Array<ChatAttachmentPayload> | undefined =
           hasAttachments
             ? attachments.map((a) => ({
@@ -217,7 +269,7 @@ export function useSylangChat(options: Options) {
         const stream = streamAgentEvents({
           sessionKey: optionsRef.current.sessionKey,
           friendlyId: optionsRef.current.friendlyId,
-          message: trimmed,
+          message: enrichedMessage,
           idempotencyKey: userMessage.id,
           workspacePath: optionsRef.current.workspacePath,
           localAgentUrl: optionsRef.current.localAgentUrl,
