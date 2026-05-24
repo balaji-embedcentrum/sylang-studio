@@ -14,7 +14,7 @@ import {
 } from '@hugeicons/core-free-icons'
 import { AnimatePresence, motion } from 'motion/react'
 import type { SessionMeta } from '@/screens/chat/types'
-import { ChatScreen } from '@/screens/chat/chat-screen'
+import { ChatScreenV2 } from '@/screens/chat-v2/chat-screen-v2'
 import { useActiveSession } from '@/hooks/use-active-session'
 import { chatQueryKeys, clearHistoryMessages, moveHistoryMessages } from '@/screens/chat/chat-queries'
 import { useWorkspaceStore } from '@/stores/workspace-store'
@@ -180,7 +180,7 @@ export function ChatPanel() {
     //    (hermes_pending_msg_* for old sessions; missing this caused the
     //    previous chat's last user bubble to appear at the top of a new chat)
     try {
-      const lsKeys: string[] = []
+      const lsKeys: Array<string> = []
       for (let i = 0; i < window.localStorage.length; i++) {
         const key = window.localStorage.key(i)
         if (!key) continue
@@ -197,7 +197,7 @@ export function ChatPanel() {
 
     // 5. Clear sessionStorage streaming state
     try {
-      const keysToRemove: string[] = []
+      const keysToRemove: Array<string> = []
       for (let i = 0; i < sessionStorage.length; i++) {
         const key = sessionStorage.key(i)
         if (key?.startsWith('hermes_streaming_')) keysToRemove.push(key)
@@ -342,15 +342,10 @@ export function ChatPanel() {
 
             {/* Chat content */}
             <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden">
-              <ChatScreen
+              <ChatScreenV2
                 key={`${activeFriendlyId}-${chatResetCounter}`}
-                activeFriendlyId={activeFriendlyId}
-                isNewChat={isNewChat}
-                forcedSessionKey={forcedSessionKey}
-                onSessionResolved={
-                  isNewChat ? handleSessionResolved : undefined
-                }
-                compact
+                sessionKey={activeFriendlyId}
+                friendlyId={activeFriendlyId}
               />
               {/* Session-ended overlay */}
               {hasSession === false && (
