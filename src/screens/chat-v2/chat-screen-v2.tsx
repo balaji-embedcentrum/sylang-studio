@@ -18,6 +18,7 @@ import {
   useRef,
   useState
 } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import {
   
   
@@ -35,6 +36,7 @@ import type {Attachment, ChatMessage, Part} from './runtime/use-sylang-chat';
 import type {ChangeEvent, ClipboardEvent, DragEvent, FormEvent, KeyboardEvent} from 'react';
 import { Markdown } from '@/components/prompt-kit/markdown'
 import { useWorkspaceStore } from '@/stores/workspace-store'
+import { useActiveSession } from '@/hooks/use-active-session'
 import { cn } from '@/lib/utils'
 
 type Props = {
@@ -160,6 +162,7 @@ export function ChatScreenV2(props: Props) {
         <SessionsSidebar
           currentSessionKey={props.sessionKey}
           onPick={() => setSidebarOpen(false)}
+          onSelectSession={props.onSelectSession}
         />
       )}
       <div className="min-w-0 flex-1">
@@ -212,6 +215,15 @@ function ChatScreenV2Inner({
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const isBusy = status === 'sending' || status === 'streaming'
+
+  // Lock the chat when the user has no active agent session. Mirrors v1's
+  // `noActiveSession = !localHermesUrl && hasCloudSession === false`.
+  // `hasSession` is null during the initial probe — keep the UI enabled
+  // then so the user doesn't see a "locked" flash on page load.
+  const { hasSession } = useActiveSession()
+  const noActiveSession = !localAgentUrl && hasSession === false
+  const composerDisabled = isBusy || noActiveSession
+  const navigate = useNavigate()
 
   useLayoutEffect(() => {
     const el = viewportRef.current
@@ -272,6 +284,7 @@ function ChatScreenV2Inner({
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (isBusy) return
+    if (noActiveSession) return
     const value = input
     const attachments = pendingAttachments
     if (!value.trim() && attachments.length === 0) return
@@ -401,6 +414,9 @@ function ChatScreenV2Inner({
           </div>
         )}
       </div>
+      {noActiveSession && (
+        <NoAgentLockBanner onPickAgent={() => navigate({ to: '/agents' })} />
+      )}
       <form
         onSubmit={handleSubmit}
         className="border-t border-primary-200 bg-white px-3 py-3"
@@ -421,9 +437,10 @@ function ChatScreenV2Inner({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="rounded-lg border border-primary-200 bg-white p-2 text-primary-600 hover:bg-primary-100"
+              disabled={composerDisabled}
+              className="rounded-lg border border-primary-200 bg-white p-2 text-primary-600 hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Attach files"
-              title="Attach files"
+              title={noActiveSession ? 'Select an agent first' : 'Attach files'}
             >
               📎
             </button>
@@ -441,9 +458,14 @@ function ChatScreenV2Inner({
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
               rows={1}
-              autoFocus
-              placeholder="Message the agent… (paste / drop files to attach)"
-              className="flex-1 resize-none rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-950 placeholder:text-primary-400 focus:border-primary-400 focus:outline-none"
+              autoFocus={!composerDisabled}
+              disabled={composerDisabled}
+              placeholder={
+                noActiveSession
+                  ? '🔒  Select an agent on /agents to start chatting'
+                  : 'Message the agent… (paste / drop files to attach)'
+              }
+              className="flex-1 resize-none rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-950 placeholder:text-primary-400 focus:border-primary-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-primary-100/50 disabled:text-primary-500"
             />
             {isBusy ? (
               <button
@@ -456,8 +478,11 @@ function ChatScreenV2Inner({
             ) : (
               <button
                 type="submit"
-                disabled={!input.trim() && pendingAttachments.length === 0}
-                className="rounded-lg bg-accent-500 px-3 py-2 text-sm font-medium text-white hover:bg-accent-600 disabled:opacity-50"
+                disabled={
+                  composerDisabled ||
+                  (!input.trim() && pendingAttachments.length === 0)
+                }
+                className="rounded-lg bg-accent-500 px-3 py-2 text-sm font-medium text-white hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Send
               </button>
@@ -479,6 +504,33 @@ function EmptyState() {
           This is chat-v2 (rewritten with single source of truth).
         </div>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Slim banner shown above the composer when the user has no active agent
+ * session — mirrors v1's lock behaviour. Clicking "Pick an agent" sends
+ * them to /agents where they can claim one; the lock clears automatically
+ * via useActiveSession's realtime + focus listeners.
+ */
+function NoAgentLockBanner({ onPickAgent }: { onPickAgent: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+      <span className="flex items-center gap-2">
+        <span aria-hidden="true">🔒</span>
+        <span>
+          <strong>No agent selected.</strong> Chat is locked until you pick
+          an agent.
+        </span>
+      </span>
+      <button
+        type="button"
+        onClick={onPickAgent}
+        className="flex-none rounded border border-amber-300 bg-white px-2 py-0.5 text-[11px] font-medium text-amber-800 hover:bg-amber-100"
+      >
+        Pick an agent →
+      </button>
     </div>
   )
 }
