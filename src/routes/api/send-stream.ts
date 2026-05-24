@@ -606,6 +606,21 @@ export const Route = createFileRoute('/api/send-stream')({
                         sessionKey: portableSessionKey,
                         runId,
                       })
+                    } else if (chunk.type === 'tool') {
+                      // hermes-adapter emits `event: tool` SSE frames with
+                      // {phase, id, name, args, result} when the agent runs a
+                      // tool — forward to chat-v2 so it can render the tool
+                      // card without waiting for the final assistant message.
+                      const t = chunk.tool
+                      sendEvent('tool', {
+                        phase: t.phase,
+                        name: t.name,
+                        toolCallId: t.id,
+                        args: t.args,
+                        result: t.result,
+                        sessionKey: portableSessionKey,
+                        runId,
+                      })
                     } else {
                       accumulated += chunk.text
                       sendEvent('chunk', {
