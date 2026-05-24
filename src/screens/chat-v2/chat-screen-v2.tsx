@@ -487,6 +487,56 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
+/**
+ * Pull out every plain-text fragment of a message — used for the copy button
+ * so the clipboard gets the user's prompt / the assistant's reply, not the
+ * tool / reasoning chrome around it.
+ */
+function messagePlainText(message: ChatMessage): string {
+  const out: Array<string> = []
+  for (const p of message.parts) {
+    if (p.type === 'text' && p.text) out.push(p.text)
+  }
+  return out.join('\n\n').trim()
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  const timerRef = useRef<number | null>(null)
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current)
+    }
+  }, [])
+  const handleClick = async () => {
+    if (!text) return
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current)
+      timerRef.current = window.setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // clipboard can fail in non-secure contexts — silent
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => void handleClick()}
+      disabled={!text}
+      className={cn(
+        'rounded p-1 text-[11px] leading-none transition-colors',
+        'text-primary-400 opacity-0 hover:bg-primary-100 hover:text-primary-700 group-hover:opacity-100',
+        copied && 'text-emerald-600 opacity-100',
+      )}
+      aria-label={copied ? 'Copied' : 'Copy message'}
+      title={copied ? 'Copied!' : 'Copy'}
+    >
+      {copied ? '✓' : '⧉'}
+    </button>
+  )
+}
+
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === 'user'
   // "Waiting" = streaming assistant whose bubble has no rendered content yet
@@ -509,14 +559,25 @@ function MessageBubble({ message }: { message: ChatMessage }) {
     Boolean(message.streaming) &&
     hasRenderableContent
 
+  const copyText = messagePlainText(message)
+  // Don't show the copy button on the still-streaming assistant bubble —
+  // copying partial output is rarely what the user wants. It re-appears as
+  // soon as streaming finishes.
+  const showCopyButton = copyText.length > 0 && !message.streaming
+
   return (
     <div
       className={cn(
-        'flex items-end gap-2',
+        'group flex items-end gap-2',
         isUser ? 'justify-end' : 'justify-start',
       )}
     >
       {!isUser && <AssistantAvatar />}
+      {isUser && showCopyButton && (
+        <div className="flex flex-col self-end">
+          <CopyButton text={copyText} />
+        </div>
+      )}
       <div
         className={cn(
           'max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm',
@@ -543,6 +604,11 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           <div className="mt-1 inline-flex h-2 w-2 animate-pulse rounded-full bg-primary-400" />
         )}
       </div>
+      {!isUser && showCopyButton && (
+        <div className="flex flex-col self-end">
+          <CopyButton text={copyText} />
+        </div>
+      )}
     </div>
   )
 }

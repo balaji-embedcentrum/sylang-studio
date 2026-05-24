@@ -17,9 +17,10 @@ import { useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import type {LocalSession} from '@/screens/chat-v2/runtime/local-sessions';
 import {
-  
+
   deleteLocalSession,
   listLocalSessions,
+  listLocalSessionsServerSnapshot,
   subscribeLocalSessions
 } from '@/screens/chat-v2/runtime/local-sessions'
 import { chatQueryKeys } from '@/screens/chat/chat-queries'
@@ -41,11 +42,14 @@ function formatRelativeTime(ms: number): string {
   return new Date(ms).toLocaleDateString()
 }
 
-function useLocalSessions(): Array<LocalSession> {
+function useLocalSessions(): ReadonlyArray<LocalSession> {
+  // Snapshot getters MUST return a stable reference between writes — see
+  // the comment in local-sessions.ts. Both `listLocalSessions` (client) and
+  // `listLocalSessionsServerSnapshot` (SSR) honor that contract.
   return useSyncExternalStore(
     subscribeLocalSessions,
     listLocalSessions,
-    () => [],
+    listLocalSessionsServerSnapshot,
   )
 }
 
