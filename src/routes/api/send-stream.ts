@@ -622,10 +622,19 @@ export const Route = createFileRoute('/api/send-stream')({
                         runId,
                       })
                     } else {
+                      // Forward the DELTA (chunk.text), not the running
+                      // accumulated total. chat-v2's chunk handler treats
+                      // missing `fullReplace` as append, so each delta is
+                      // tacked onto the most recent text part. Sending
+                      // `accumulated` with `fullReplace: true` would be
+                      // dropped after tools fire — chat-v2's anti-
+                      // duplication guard skips fullReplace=true frames
+                      // when tool parts are already present in the bubble.
+                      // Result was: tools rendered, but the final
+                      // assistant text never appeared after them.
                       accumulated += chunk.text
                       sendEvent('chunk', {
-                        text: accumulated,
-                        fullReplace: true,
+                        text: chunk.text,
                         sessionKey: portableSessionKey,
                         runId,
                       })
