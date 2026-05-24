@@ -84,8 +84,12 @@ function writeStore(next: Stored): void {
   if (!isBrowser()) return
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-  } catch {
-    // quota / private mode — swallow; sidebar just won't persist this turn
+    console.debug(
+      `[chat-v2] sidebar index saved (${next.sessions.length} rows)`,
+    )
+  } catch (e) {
+    // quota / private mode — surface so we can see what's wrong
+    console.error('[chat-v2] sidebar index save failed', e)
   }
   invalidateSnapshot()
   for (const fn of listeners) {
@@ -258,16 +262,64 @@ export function saveLocalSessionMessages(
   sessionKey: string,
   messages: ReadonlyArray<unknown>,
 ): void {
-  if (!isBrowser() || !sessionKey) return
-  try {
-    const payload = JSON.stringify({
-      version: 1,
-      messages: lightenMessagesForStorage(messages),
+  if (!isBrowser() || !sessionKey) {
+    console.warn('[chat-v2] save skipped: no sessionKey or no window', {
+      sessionKey,
     })
+    return
+  }
+  // First try the simple path — serialize the whole array at once.
+  const lightened = lightenMessagesForStorage(messages)
+  let payload: string
+  try {
+    payload = JSON.stringify({ version: 1, messages: lightened })
+  } catch (e) {
+    // Some tool result contained a value JSON.stringify can't handle
+    // (function, Symbol, circular ref, BigInt). Fall back to per-message
+    // serialization with a placeholder for the bad ones so the rest still
+    // persists. Loudly — silent failure here is exactly what was hiding
+    // the bug before.
+    console.error(
+      '[chat-v2] save full-array JSON.stringify failed, falling back per-message',
+      e,
+    )
+    const safeMessages = (lightened as Array<unknown>).map((m, i) => {
+      try {
+        JSON.stringify(m)
+        return m
+      } catch (innerErr) {
+        console.error(
+          `[chat-v2] save dropping message[${i}] (non-serializable)`,
+          innerErr,
+        )
+        return {
+          id: `unserializable_${i}`,
+          role: 'assistant',
+          parts: [{ type: 'text', text: '[unserializable message dropped]' }],
+        }
+      }
+    })
+    try {
+      payload = JSON.stringify({ version: 1, messages: safeMessages })
+    } catch (eRetry) {
+      console.error('[chat-v2] save retry also failed, aborting', eRetry)
+      return
+    }
+  }
+  try {
     localStorage.setItem(messagesKey(sessionKey), payload)
-  } catch {
-    // Quota / private mode — silently degrade. Worst case the next
-    // mount can't restore from local; agent reload remains a fallback.
+    // One concise success line per save — lets the user verify in
+    // devtools that persistence is actually happening for the active
+    // session, and what key it's under.
+    console.debug(
+      `[chat-v2] saved ${(messages as Array<unknown>).length} msg → ${messagesKey(sessionKey)} (${payload.length} bytes)`,
+    )
+  } catch (e) {
+    // Quota / private mode / disabled — surface it.
+    console.error(
+      `[chat-v2] localStorage.setItem failed for ${messagesKey(sessionKey)} (${payload.length} bytes)`,
+      e,
+    )
   }
 }
 
