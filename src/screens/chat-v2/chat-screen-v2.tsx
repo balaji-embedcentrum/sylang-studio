@@ -25,6 +25,7 @@ import {
 } from './runtime/use-sylang-chat'
 import { useHistoryHydration } from './hooks/use-history-hydration'
 import { SessionsSidebar } from './components/sessions-sidebar'
+import { ToolSection } from './components/tool-section'
 import { Markdown } from '@/components/prompt-kit/markdown'
 import { cn } from '@/lib/utils'
 
@@ -448,35 +449,25 @@ function PartRenderer({ part }: { part: Part }) {
   }
   if (part.type === 'reasoning') {
     if (!part.text) return null
+    const preview = part.text.split('\n')[0].trim()
+    const short = preview.length > 80 ? `${preview.slice(0, 77)}…` : preview
     return (
-      <details className="mb-2 rounded border border-primary-200/60 bg-primary-50/50 px-2 py-1 text-xs">
-        <summary className="cursor-pointer text-primary-600">Thinking…</summary>
-        <div className="mt-1 whitespace-pre-wrap text-[11px] text-primary-600">
-          {part.text}
+      <details className="mb-2 rounded border border-primary-200/60 bg-primary-50/40 text-xs">
+        <summary className="flex cursor-pointer items-baseline gap-2 px-2 py-1.5 text-primary-700 hover:bg-primary-100/60">
+          <span className="font-mono text-sm">💭</span>
+          <span className="font-medium">Thinking</span>
+          {short && (
+            <span className="truncate text-primary-500">{short}</span>
+          )}
+        </summary>
+        <div className="border-t border-primary-200/50 px-2 py-2">
+          <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded bg-white/60 p-1.5 font-sans text-[11px] leading-snug text-primary-700 ring-1 ring-primary-200/40">
+            {part.text}
+          </pre>
         </div>
       </details>
     )
   }
-  // tool part
-  return (
-    <details className="my-1 rounded border border-primary-200 bg-primary-50/60 px-2 py-1 text-xs">
-      <summary className="cursor-pointer font-mono text-primary-700">
-        {part.name}{' '}
-        <span className="text-primary-400">
-          {part.phase === 'complete'
-            ? '✓'
-            : part.phase === 'error'
-              ? '✗'
-              : '…'}
-        </span>
-      </summary>
-      <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap text-[11px] text-primary-600">
-        {JSON.stringify(
-          { args: part.args, preview: part.preview, result: part.result },
-          null,
-          2,
-        )}
-      </pre>
-    </details>
-  )
+  // tool part — delegate to the proper TUI-style card
+  return <ToolSection tool={part} />
 }
