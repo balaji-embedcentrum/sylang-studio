@@ -34,6 +34,7 @@ import {
 import type {Attachment, ChatMessage, Part} from './runtime/use-sylang-chat';
 import type {ChangeEvent, ClipboardEvent, DragEvent, FormEvent, KeyboardEvent} from 'react';
 import { Markdown } from '@/components/prompt-kit/markdown'
+import { useWorkspaceStore } from '@/stores/workspace-store'
 import { cn } from '@/lib/utils'
 
 type Props = {
@@ -81,6 +82,25 @@ export function ChatScreenV2(props: Props) {
   // Toggle via the header button to bring it in.
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  // Pull the active project's workspace path from the workspace store.
+  // Server's /api/send-stream uses this to build the "CURRENT PROJECT /
+  // PROJECT ROOT" system-message block — without it the agent never gets
+  // told which project it's looking at and falls back to /app (the
+  // Dockerfile WORKDIR). Falls back to whatever the caller passed in via
+  // props for backwards compat / explicit overrides.
+  const storeWorkspacePath = useWorkspaceStore((s) => s.activeWorkspacePath)
+  const storeLocalAgentUrl = useWorkspaceStore((s) => s.localHermesUrl)
+  const storeLocalWorkspaceRoot = useWorkspaceStore(
+    (s) => s.localWorkspaceRoot,
+  )
+  const resolvedProps: Props = {
+    ...props,
+    workspacePath: props.workspacePath || storeWorkspacePath || undefined,
+    localAgentUrl: props.localAgentUrl || storeLocalAgentUrl || undefined,
+    localWorkspaceRoot:
+      props.localWorkspaceRoot || storeLocalWorkspaceRoot || undefined,
+  }
+
   // Fetch /api/history BEFORE mounting the chat hook so its initial state
   // already has the previous turns. Avoids the double-render flash you'd
   // get if we seeded via a post-mount effect.
@@ -125,7 +145,7 @@ export function ChatScreenV2(props: Props) {
       <div className="min-w-0 flex-1">
         <ChatScreenV2Inner
           key={props.sessionKey}
-          {...props}
+          {...resolvedProps}
           initialMessages={initialMessages}
           hydrationError={hydrationError}
           sidebarOpen={sidebarOpen}

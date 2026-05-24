@@ -134,16 +134,38 @@ export function useSylangChat(options: Options) {
       switch (event.type) {
         case 'chunk': {
           const incoming = String(event.data.text ?? '')
-          const fullReplace = event.data.fullReplace !== false
+          // The server emits TWO shapes of chunk events:
+          //   • assistant.delta     → { text: <delta> }                  (append)
+          //   • assistant.completed → { text: <full>, fullReplace: true } (replace)
+          // Default MUST be append when fullReplace is absent — otherwise
+          // every delta wipes the bubble and you only see the final
+          // assistant.completed text at the end (no streaming feel).
+          const fullReplace = event.data.fullReplace === true
           updateAssistant(assistantId, (m) => {
             const parts = [...m.parts]
+            const hasParts = parts.length > 0
             const lastIdx = parts.length - 1
-            const last = parts[lastIdx]
-            if (last?.type === 'text') {
-              parts[lastIdx] = {
-                type: 'text',
-                text: fullReplace ? incoming : last.text + incoming,
+            const lastIsText = hasParts && parts[lastIdx].type === 'text'
+            if (fullReplace) {
+              // assistant.completed is a fallback that arrives AFTER the
+              // delta stream has finished. If tools were emitted in
+              // between, the text is already split across multiple text
+              // parts in chronological order — overwriting the last one
+              // with the full accumulated text would duplicate pre-tool
+              // content. Skip the replace in that case; the deltas
+              // already painted everything. Only honor fullReplace when
+              // the bubble has a single text segment (no interleaved
+              // tools), which is the typical short-reply path.
+              const hasTool = parts.some((p) => p.type === 'tool')
+              if (hasTool) return m
+              if (lastIsText) {
+                parts[lastIdx] = { type: 'text', text: incoming }
+              } else {
+                parts.push({ type: 'text', text: incoming })
               }
+            } else if (lastIsText) {
+              const prev = parts[lastIdx] as TextPart
+              parts[lastIdx] = { type: 'text', text: prev.text + incoming }
             } else {
               parts.push({ type: 'text', text: incoming })
             }
