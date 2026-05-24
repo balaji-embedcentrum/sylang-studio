@@ -41,6 +41,21 @@ type Stored = {
 
 const listeners = new Set<() => void>()
 
+// Stable empty array reference for both the SSR snapshot of
+// useSyncExternalStore AND the "no sessions" return from listLocalSessions().
+// IMPORTANT: useSyncExternalStore requires getSnapshot() to return the SAME
+// reference when the underlying data hasn't changed. Returning a freshly
+// built array each call (e.g. `[...sessions].sort(...)`) makes React think
+// the store changed on every render → infinite re-render loop → React error
+// #185 "Maximum update depth exceeded". So we cache the sorted snapshot
+// here and only rebuild it after a real write.
+const EMPTY_SESSIONS: ReadonlyArray<LocalSession> = Object.freeze([])
+let cachedSnapshot: ReadonlyArray<LocalSession> | null = null
+
+function invalidateSnapshot(): void {
+  cachedSnapshot = null
+}
+
 function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof localStorage !== 'undefined'
 }
@@ -72,6 +87,7 @@ function writeStore(next: Stored): void {
   } catch {
     // quota / private mode — swallow; sidebar just won't persist this turn
   }
+  invalidateSnapshot()
   for (const fn of listeners) {
     try {
       fn()
@@ -84,6 +100,7 @@ function writeStore(next: Stored): void {
 if (isBrowser()) {
   window.addEventListener('storage', (e) => {
     if (e.key !== STORAGE_KEY) return
+    invalidateSnapshot()
     for (const fn of listeners) {
       try {
         fn()
@@ -94,9 +111,28 @@ if (isBrowser()) {
   })
 }
 
-export function listLocalSessions(): Array<LocalSession> {
+/**
+ * Returns a STABLE array reference between writes — safe to use as the
+ * `getSnapshot` argument to React.useSyncExternalStore. After any
+ * upsert/delete (or cross-tab write) the cache is invalidated and the next
+ * call rebuilds it.
+ */
+export function listLocalSessions(): ReadonlyArray<LocalSession> {
+  if (cachedSnapshot !== null) return cachedSnapshot
   const { sessions } = readStore()
-  return [...sessions].sort((a, b) => b.updatedAt - a.updatedAt)
+  if (sessions.length === 0) {
+    cachedSnapshot = EMPTY_SESSIONS
+    return cachedSnapshot
+  }
+  cachedSnapshot = Object.freeze(
+    [...sessions].sort((a, b) => b.updatedAt - a.updatedAt),
+  )
+  return cachedSnapshot
+}
+
+/** Stable empty-array snapshot for SSR / first paint. */
+export function listLocalSessionsServerSnapshot(): ReadonlyArray<LocalSession> {
+  return EMPTY_SESSIONS
 }
 
 export function getLocalSession(key: string): LocalSession | null {
@@ -125,11 +161,21 @@ export function upsertLocalSession(input: {
     const existing = store.sessions[idx]
     const labelIsFallback =
       !existing.label || existing.label === existing.key
+    const nextLabel =
+      cleanedLabel && labelIsFallback ? cleanedLabel : existing.label
+    const nextSnippet = cleanedSnippet || existing.lastSnippet
+    // No-op short-circuit: if neither label nor snippet actually changed,
+    // skip the write (and the listener fan-out). The effect in ChatScreenV2
+    // calls us on every messages change, so most invocations are no-ops
+    // once the label is set. Without this, every keystroke / token stream
+    // re-renders every useSyncExternalStore subscriber.
+    if (nextLabel === existing.label && nextSnippet === existing.lastSnippet) {
+      return existing
+    }
     entry = {
       ...existing,
-      label:
-        cleanedLabel && labelIsFallback ? cleanedLabel : existing.label,
-      lastSnippet: cleanedSnippet || existing.lastSnippet,
+      label: nextLabel,
+      lastSnippet: nextSnippet,
       updatedAt: now,
     }
     store.sessions[idx] = entry
