@@ -300,10 +300,12 @@ export function useSylangChat(options: Options) {
           signal: abort.signal,
         })
         let sawAnyData = false
-        // Dev-only counter of event types seen on this turn — when "no tool
+        // Counter of event types seen on this turn — when "no tool
         // visibility" reports come in, this lets us tell whether the agent
         // actually emitted any tool events or whether the gateway just sent
-        // text. Logged once at end-of-stream so it doesn't spam.
+        // text. Logged once at end-of-stream so it doesn't spam. PROD too
+        // (not gated on import.meta.env.DEV) so users can paste console
+        // output when debugging without a dev rebuild.
         const eventCounts: Record<string, number> = {}
         for await (const event of stream) {
           if (!sawAnyData) {
@@ -314,9 +316,7 @@ export function useSylangChat(options: Options) {
           applyEvent(assistantId, event)
           if (event.type === 'done') break
         }
-        if (import.meta.env.DEV) {
-          console.debug('[chat-v2] SSE event counts', eventCounts)
-        }
+        console.log('[chat-v2] SSE event counts', eventCounts)
       } catch (err) {
         if ((err as Error).name === 'AbortError') return
         setError(err instanceof Error ? err.message : 'send failed')

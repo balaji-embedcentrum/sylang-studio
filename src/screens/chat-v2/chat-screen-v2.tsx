@@ -83,7 +83,19 @@ function fileToAttachment(file: File): Promise<Attachment> {
   })
 }
 
+// Marker logged once on first mount of ChatScreenV2 in the browser so
+// users can confirm in devtools whether the deployed bundle contains
+// the latest chat-v2 code (vs. a cached / stale build still serving an
+// older index.html). Bump the version string in PRs that change chat-v2.
+const CHAT_V2_BUILD_TAG = 'chat-v2 build #43+marker'
+let chatV2BuildLogged = false
+
 export function ChatScreenV2(props: Props) {
+  if (!chatV2BuildLogged && typeof window !== 'undefined') {
+    chatV2BuildLogged = true
+    console.log(`[${CHAT_V2_BUILD_TAG}] mounted`)
+  }
+
   // Sessions sidebar is hidden by default — it crowds the chat especially
   // when chat-v2 is mounted inside the narrow right-side ChatPanel.
   // Toggle via the header button to bring it in.
