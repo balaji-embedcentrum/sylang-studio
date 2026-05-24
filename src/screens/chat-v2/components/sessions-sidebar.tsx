@@ -1,68 +1,38 @@
 /**
- * Minimal sessions sidebar for chat-v2. Lists the user's chat sessions
- * from /api/sessions, lets them switch (URL navigation) or start a new
- * one. Reuses the existing fetchSessions helper from the legacy chat
- * module — same backend, just a different presentation.
+ * Sessions sidebar for chat-v2 — reads from BROWSER localStorage instead of
+ * the agent's session list.
  *
- * Deliberately small: no rename, no delete, no search yet. Those are
- * easy follow-ups but the goal here is feature parity at the 'I can
- * see and switch between my chats' level.
+ * Rationale: hermes-adapter agent containers hold their own session DB.
+ * `fleet up` / container rebuilds wipe that DB, which makes /api/sessions
+ * silently empty and leaves the user with no record of past conversations.
+ * The browser-local index in `local-sessions.ts` survives container churn,
+ * which is what the user actually wants here.
+ *
+ * History (the messages themselves) is still fetched on demand from
+ * /api/history when you open a session, so this is purely the index.
  */
 
+import { useCallback, useSyncExternalStore } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
-import { fetchSessions, chatQueryKeys } from '@/screens/chat/chat-queries'
-import type { SessionMeta } from '@/screens/chat/types'
+import { useQueryClient } from '@tanstack/react-query'
+import type {LocalSession} from '@/screens/chat-v2/runtime/local-sessions';
+import {
+  
+  deleteLocalSession,
+  listLocalSessions,
+  subscribeLocalSessions
+} from '@/screens/chat-v2/runtime/local-sessions'
+import { chatQueryKeys } from '@/screens/chat/chat-queries'
 import { cn } from '@/lib/utils'
 
 type Props = {
   currentSessionKey: string
-  /** Optional callback fired after navigation, useful for closing the
-   *  sidebar on mobile. */
+  /** Optional callback fired after navigation / action, useful for closing
+   *  the sidebar after the user picks a session. */
   onPick?: () => void
 }
 
-function pickLabel(session: SessionMeta): string {
-  return (
-    session.title ||
-    session.derivedTitle ||
-    session.label ||
-    session.friendlyId ||
-    session.key
-  )
-}
-
-function pickSubLabel(session: SessionMeta): string | null {
-  const last = session.lastMessage
-  if (!last) return null
-  const text = extractFirstLineOfText(last) ?? ''
-  if (!text) return null
-  return text.length > 60 ? `${text.slice(0, 57)}…` : text
-}
-
-function extractFirstLineOfText(message: unknown): string | null {
-  if (!message || typeof message !== 'object') return null
-  const m = message as Record<string, unknown>
-  if (typeof m.text === 'string' && m.text.trim()) {
-    return m.text.split('\n')[0].trim()
-  }
-  if (Array.isArray(m.content)) {
-    for (const p of m.content) {
-      if (
-        p &&
-        typeof p === 'object' &&
-        (p as Record<string, unknown>).type === 'text'
-      ) {
-        const t = (p as Record<string, unknown>).text
-        if (typeof t === 'string' && t.trim()) return t.split('\n')[0].trim()
-      }
-    }
-  }
-  return null
-}
-
-function formatRelativeTime(ms?: number): string | null {
-  if (!ms || !Number.isFinite(ms)) return null
+function formatRelativeTime(ms: number): string {
   const diff = Date.now() - ms
   if (diff < 60_000) return 'just now'
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`
@@ -71,34 +41,73 @@ function formatRelativeTime(ms?: number): string | null {
   return new Date(ms).toLocaleDateString()
 }
 
+function useLocalSessions(): Array<LocalSession> {
+  return useSyncExternalStore(
+    subscribeLocalSessions,
+    listLocalSessions,
+    () => [],
+  )
+}
+
 export function SessionsSidebar({ currentSessionKey, onPick }: Props) {
   const navigate = useNavigate()
-  const query = useQuery({
-    queryKey: chatQueryKeys.sessions,
-    queryFn: fetchSessions,
-    refetchInterval: 15_000,
-    staleTime: 10_000,
-  })
+  const queryClient = useQueryClient()
+  const sessions = useLocalSessions()
 
-  const goTo = (sessionKey: string) => {
-    void navigate({
-      to: '/chat/$sessionKey',
-      params: { sessionKey },
-    })
-    onPick?.()
-  }
-
-  const sessions = query.data ?? []
-  const sorted = [...sessions].sort(
-    (a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0),
+  const goTo = useCallback(
+    (sessionKey: string) => {
+      void navigate({
+        to: '/chat/$sessionKey',
+        params: { sessionKey },
+      })
+      onPick?.()
+    },
+    [navigate, onPick],
   )
+
+  const handleDelete = useCallback(
+    (e: React.MouseEvent, sessionKey: string) => {
+      e.stopPropagation()
+      e.preventDefault()
+      deleteLocalSession(sessionKey)
+      // Drop any cached history for this session so a future visit refetches
+      // (or starts blank if the agent doesn't have it either).
+      queryClient.removeQueries({
+        queryKey: ['chat', 'history', sessionKey],
+        exact: false,
+      })
+      if (sessionKey === currentSessionKey) {
+        // We just deleted the open session — bounce to a fresh one.
+        const fresh = `s_${Date.now().toString(36)}`
+        void navigate({
+          to: '/chat/$sessionKey',
+          params: { sessionKey: fresh },
+        })
+      }
+    },
+    [currentSessionKey, navigate, queryClient],
+  )
+
+  const handleNewChat = useCallback(() => {
+    // Generate a fresh sessionKey rather than hardcoding "new" — that way every
+    // new chat is a distinct row in the sidebar instead of overwriting one.
+    const fresh = `s_${Date.now().toString(36)}_${Math.random()
+      .toString(36)
+      .slice(2, 6)}`
+    // Bust any stale history cache under this (unlikely-to-collide) key.
+    queryClient.removeQueries({
+      queryKey: chatQueryKeys.history(fresh, fresh),
+      exact: true,
+    })
+    goTo(fresh)
+  }, [goTo, queryClient])
 
   return (
     <aside className="flex h-full w-64 flex-none flex-col border-r border-primary-200 bg-primary-50/60">
       <div className="border-b border-primary-200 p-2">
         <button
           type="button"
-          onClick={() => goTo('new')}
+          onClick={handleNewChat}
           className="w-full rounded-lg bg-accent-500 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-accent-600"
         >
           + New chat
@@ -106,61 +115,66 @@ export function SessionsSidebar({ currentSessionKey, onPick }: Props) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-1">
-        {query.isLoading && sessions.length === 0 ? (
-          <div className="p-3 text-xs text-primary-500">Loading sessions…</div>
-        ) : query.error ? (
-          <div className="p-3 text-xs text-red-600">
-            Couldn’t load sessions.
-            <button
-              type="button"
-              onClick={() => query.refetch()}
-              className="ml-1 underline"
-            >
-              Retry
-            </button>
-          </div>
-        ) : sorted.length === 0 ? (
+        {sessions.length === 0 ? (
           <div className="p-3 text-xs text-primary-500">
             No chats yet — send a message to start one.
           </div>
         ) : (
           <ul className="space-y-0.5">
-            {sorted.map((session) => {
-              const active = session.friendlyId === currentSessionKey
-              const label = pickLabel(session)
-              const sub = pickSubLabel(session)
-              const rel = formatRelativeTime(session.updatedAt)
+            {sessions.map((session) => {
+              const active = session.key === currentSessionKey
               return (
                 <li key={session.key}>
-                  <button
-                    type="button"
-                    onClick={() => goTo(session.friendlyId)}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => goTo(session.key)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        goTo(session.key)
+                      }
+                    }}
                     className={cn(
-                      'group flex w-full flex-col items-start gap-0.5 rounded-md px-2 py-2 text-left text-sm transition-colors',
+                      'group flex w-full cursor-pointer flex-col items-start gap-0.5 rounded-md px-2 py-2 text-left text-sm transition-colors',
                       active
                         ? 'bg-primary-200 text-primary-950'
                         : 'text-primary-800 hover:bg-primary-100',
                     )}
                   >
                     <div className="flex w-full items-baseline justify-between gap-2">
-                      <span className="truncate font-medium">{label}</span>
-                      {rel && (
-                        <span className="flex-none text-[10px] text-primary-500">
-                          {rel}
+                      <span className="truncate font-medium">
+                        {session.label}
+                      </span>
+                      <div className="flex flex-none items-center gap-1">
+                        <span className="text-[10px] text-primary-500">
+                          {formatRelativeTime(session.updatedAt)}
                         </span>
-                      )}
+                        <button
+                          type="button"
+                          onClick={(e) => handleDelete(e, session.key)}
+                          aria-label={`Delete chat ${session.label}`}
+                          title="Remove from sidebar"
+                          className="rounded p-0.5 text-primary-400 opacity-0 transition-opacity hover:bg-red-100 hover:text-red-600 group-hover:opacity-100"
+                        >
+                          ×
+                        </button>
+                      </div>
                     </div>
-                    {sub && (
+                    {session.lastSnippet && (
                       <span className="line-clamp-1 w-full text-xs text-primary-500">
-                        {sub}
+                        {session.lastSnippet}
                       </span>
                     )}
-                  </button>
+                  </div>
                 </li>
               )
             })}
           </ul>
         )}
+      </div>
+      <div className="border-t border-primary-200/70 px-2 py-1 text-[10px] text-primary-400">
+        Stored locally in this browser.
       </div>
     </aside>
   )
