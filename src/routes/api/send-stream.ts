@@ -465,7 +465,22 @@ export const Route = createFileRoute('/api/send-stream')({
             lines.push(`Use your full tool, skill, and reasoning capabilities to help`)
             lines.push(`within ${absWorkspacePath}. The directory scope is the only`)
             lines.push(`restriction.`)
+            lines.push(``)
           }
+
+          lines.push(`USER-ATTACHED IMAGES:`)
+          lines.push(`When the user pastes or uploads an image, the studio persists`)
+          lines.push(`it to /tmp/hermes_inbound_images/<uuid>.<ext> and references the`)
+          lines.push(`path in the user message as a [image: /tmp/hermes_inbound_images/...]`)
+          lines.push(`marker. Those specific files are SAFE to read with the Read tool`)
+          lines.push(`even though the general /tmp prohibition above stands — they are`)
+          lines.push(`user-provided attachments meant for you to look at. The general`)
+          lines.push(`/tmp prohibition still applies to every other /tmp path.`)
+          lines.push(``)
+          lines.push(`SKILLS AVAILABLE:`)
+          lines.push(`Sylang and Jot skills are already installed in your skills folder.`)
+          lines.push(`For any Sylang or Jot related work, consult those skills first`)
+          lines.push(`instead of guessing syntax or conventions.`)
 
           workspaceContextNote = lines.join('\n')
         }
