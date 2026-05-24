@@ -241,8 +241,37 @@ function ChatScreenV2Inner({
         </div>
       )}
       {(error || attachmentError || hydrationError) && (
-        <div className="border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">
-          {error ?? attachmentError ?? `Couldn't load history: ${hydrationError}`}
+        <div className="flex items-center justify-between gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">
+          <span className="min-w-0 flex-1">
+            {error ?? attachmentError ?? `Couldn't load history: ${hydrationError}`}
+          </span>
+          {error && (
+            <button
+              type="button"
+              onClick={() => {
+                // Find the last user message and drop its text back into the
+                // composer so the user can edit + retry. We don't auto-resend
+                // because the original send might have included attachments
+                // we no longer have in memory.
+                for (let i = messages.length - 1; i >= 0; i--) {
+                  const msg = messages[i]
+                  if (msg.role !== 'user') continue
+                  const text = msg.parts
+                    .filter((p) => p.type === 'text')
+                    .map((p) => (p as { text: string }).text)
+                    .join('')
+                  if (text) {
+                    setInput(text)
+                    inputRef.current?.focus()
+                  }
+                  break
+                }
+              }}
+              className="flex-none rounded border border-red-300 bg-white px-2 py-0.5 text-[11px] font-medium text-red-700 hover:bg-red-100"
+            >
+              Retry last
+            </button>
+          )}
         </div>
       )}
       <div ref={viewportRef} className="flex-1 overflow-y-auto px-4 py-6">
