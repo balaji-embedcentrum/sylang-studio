@@ -489,14 +489,40 @@ function formatBytes(bytes: number): string {
 
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === 'user'
+  // "Waiting" = streaming assistant whose bubble has no rendered content yet
+  // (no visible text, no tool card, no reasoning). Used to switch the bubble
+  // into a "Thinking…" pulse instead of just showing an empty card.
+  const hasRenderableContent = message.parts.some((p) => {
+    if (p.type === 'tool') return true
+    if (p.type === 'reasoning' && p.text.trim()) return true
+    if (p.type === 'text' && p.text.trim()) return true
+    return false
+  })
+  const isWaiting =
+    message.role === 'assistant' &&
+    Boolean(message.streaming) &&
+    !hasRenderableContent
+  // Show the small pulse dot when streaming has already started painting
+  // text — confirms the stream is alive but doesn't crowd the bubble.
+  const showInlinePulse =
+    message.role === 'assistant' &&
+    Boolean(message.streaming) &&
+    hasRenderableContent
+
   return (
-    <div className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
+    <div
+      className={cn(
+        'flex items-end gap-2',
+        isUser ? 'justify-end' : 'justify-start',
+      )}
+    >
+      {!isUser && <AssistantAvatar />}
       <div
         className={cn(
           'max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm',
           isUser
             ? 'bg-primary-200/80 text-primary-950'
-            : 'bg-white text-primary-950 ring-1 ring-primary-100',
+            : 'rounded-bl-sm bg-white text-primary-950 ring-1 ring-primary-100',
         )}
       >
         {message.attachments && message.attachments.length > 0 && (
@@ -506,13 +532,66 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             ))}
           </div>
         )}
-        {message.parts.map((part, idx) => (
-          <PartRenderer key={idx} part={part} />
-        ))}
-        {message.streaming && message.role === 'assistant' && (
+        {isWaiting ? (
+          <ThinkingPulse />
+        ) : (
+          message.parts.map((part, idx) => (
+            <PartRenderer key={idx} part={part} />
+          ))
+        )}
+        {showInlinePulse && (
           <div className="mt-1 inline-flex h-2 w-2 animate-pulse rounded-full bg-primary-400" />
         )}
       </div>
+    </div>
+  )
+}
+
+function AssistantAvatar() {
+  return (
+    <div
+      className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-white p-0.5 shadow-sm ring-1 ring-primary-200"
+      aria-label="Sylang agent"
+      title="Sylang agent"
+    >
+      <img
+        src="/sylang-logo.svg"
+        alt=""
+        className="h-full w-full object-contain"
+      />
+    </div>
+  )
+}
+
+/**
+ * Three bouncing dots + a "Thinking… <elapsed>s" label. Used as the body of
+ * an assistant bubble while we're still waiting for the first delta / tool
+ * event to arrive. Self-contained — owns its own elapsed-time interval so it
+ * resets cleanly whenever the parent re-mounts it.
+ */
+function ThinkingPulse() {
+  const [elapsed, setElapsed] = useState(0)
+  useEffect(() => {
+    const id = window.setInterval(() => setElapsed((s) => s + 1), 1000)
+    return () => window.clearInterval(id)
+  }, [])
+  const label =
+    elapsed >= 60
+      ? `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`
+      : `${elapsed}s`
+  return (
+    <div className="flex items-center gap-2 py-0.5">
+      <span className="flex items-center gap-1" aria-hidden="true">
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary-400 [animation-delay:-0.3s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary-400 [animation-delay:-0.15s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary-400" />
+      </span>
+      <span className="text-xs font-medium text-primary-500">Thinking…</span>
+      {elapsed > 0 && (
+        <span className="text-[10px] tabular-nums text-primary-400">
+          {label}
+        </span>
+      )}
     </div>
   )
 }
