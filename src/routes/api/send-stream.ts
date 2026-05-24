@@ -10,7 +10,7 @@ import {
   registerActiveSendRun,
   unregisterActiveSendRun,
 } from '../../server/send-run-tracker'
-import { getAgentConfig, getChatMode } from '../../server/gateway-capabilities'
+import { getChatMode } from '../../server/gateway-capabilities'
 import { validateSession } from '../../server/agent-sessions'
 import {
   
@@ -390,30 +390,35 @@ export const Route = createFileRoute('/api/send-stream')({
           process.env.HERMES_AGENT_WORKSPACE_ROOT || '/opt/workspaces'
         ).trim()
 
-        // Derive the per-agent workspace root from the user's selected
-        // agent URL (e.g. https://.../agent-isabelle  →  active-isabelle).
-        // Falls back to plain agent root if URL doesn't match the pattern
-        // (e.g. BYO agents on user_vps / user_tunnel which are single-tenant).
-        let perAgentWorkspaceRoot: string | null = null
-        if (authUserForSession?.userId) {
-          try {
-            const cfg = await getAgentConfig(authUserForSession.userId)
-            const m = cfg.url.match(/\/agent-([a-z0-9][a-z0-9_-]*)\/?$/)
-            if (m) {
-              perAgentWorkspaceRoot = `${agentWorkspaceRoot}/active-${m[1]}`
-            }
-          } catch {
-            /* getAgentConfig may throw — boundary just falls back to project-only */
-          }
-        }
+        // The fleet bind-mounts the *user's* workspace dir directly at
+        // /opt/workspaces inside the agent container — see
+        // hermes-adapter/.../fleet/orchestrator.py:_render_claimed_override
+        //   "- ./workspaces/{user}:/opt/workspaces"
+        // So projects live at /opt/workspaces/<repo> in the container,
+        // NOT at /opt/workspaces/active-<agent>/<github_login>/<repo>
+        // (which is what the previous version of this code assumed and
+        // which sent the agent on a wild goose chase through "No such
+        // file or directory" tool calls before it stumbled onto the real
+        // path). The per-agent / per-user isolation is enforced by the
+        // bind mount itself, not by an in-path subdirectory.
+        //
+        // We keep the workspace-root boundary in the system prompt so
+        // the model still has the "don't escape your sandbox" rule,
+        // but the root IS /opt/workspaces — same as the mount.
+        const perAgentWorkspaceRoot: string | null = authUserForSession?.userId
+          ? agentWorkspaceRoot
+          : null
 
         const segments = workspaceRelPath
           ? workspaceRelPath.replace(/\\/g, '/').split('/')
           : []
         // segments[0]=userId, segments[1]=githubLogin, segments[2]=repo, ...
+        // The userId + githubLogin segments are studio-side bookkeeping
+        // that doesn't exist inside the container — the bind mount strips
+        // them. Only the repo (and any deeper path) maps to the agent FS.
         const githubLogin = segments[1] || ''
         const repoName = segments[2] || ''
-        const agentRelPath = segments.slice(1).join('/')
+        const agentRelPath = segments.slice(2).join('/')
         const absWorkspacePath = agentRelPath
           ? `${agentWorkspaceRoot}/${agentRelPath}`
           : null
@@ -426,20 +431,13 @@ export const Route = createFileRoute('/api/send-stream')({
           if (perAgentWorkspaceRoot) {
             lines.push(`AGENT WORKSPACE ROOT (hard boundary): ${perAgentWorkspaceRoot}`)
             lines.push(``)
-            lines.push(`This is a SHARED, MULTI-TENANT host. The directory above`)
-            lines.push(`your workspace root is mounted but contains OTHER USERS'`)
-            lines.push(`files — you must never read, list, search, grep, cd into,`)
-            lines.push(`or otherwise touch anything outside ${perAgentWorkspaceRoot}/.`)
-            lines.push(`Specifically forbidden, regardless of mount permissions:`)
-            lines.push(`  - ${agentWorkspaceRoot} (parent dir — sibling user dirs live here)`)
-            lines.push(`  - any other ${agentWorkspaceRoot}/active-* symlink`)
-            lines.push(`  - /etc, /root, /home, /var, /tmp/<other>, /proc, /sys`)
-            lines.push(`If asked to "search the entire workspace", "list everything",`)
-            lines.push(`"find sibling projects", or anything that would walk above`)
-            lines.push(`${perAgentWorkspaceRoot}/ — REFUSE and explain that this is`)
-            lines.push(`a multi-tenant playground and other users' files are off-limits.`)
-            lines.push(`Use your terminal tool with cwd= inside the workspace. Never cd ..`)
-            lines.push(`above it. Tools may make this mechanically possible; you must not.`)
+            lines.push(`Your workspace is bind-mounted at ${perAgentWorkspaceRoot}.`)
+            lines.push(`Stay inside this directory for every file / list / search /`)
+            lines.push(`grep / read / write / terminal call. Don't cd .. above it,`)
+            lines.push(`don't touch /etc, /root, /home, /var, /tmp/<other>, /proc, /sys.`)
+            lines.push(`If asked to "search the entire workspace" or "list everything",`)
+            lines.push(`scope it to ${perAgentWorkspaceRoot}/ and its subdirectories.`)
+            lines.push(`Use your terminal tool with cwd= inside the workspace.`)
             lines.push(``)
           }
 
