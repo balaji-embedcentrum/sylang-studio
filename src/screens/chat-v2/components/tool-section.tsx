@@ -80,13 +80,13 @@ export function ToolSection({ tool }: Props) {
   const expandable = hasDetails(tool)
 
   return (
-    <div className="my-1 rounded border border-primary-200/70 bg-primary-50/40 text-xs">
+    <div className="my-1 rounded border border-primary-200/70 bg-primary-50/40 text-xs dark:border-primary-700/70 dark:bg-primary-900/40">
       <button
         type="button"
         onClick={() => expandable && setOpen((v) => !v)}
         className={cn(
           'group flex w-full items-start gap-2 px-2 py-1.5 text-left',
-          expandable && 'hover:bg-primary-100/60',
+          expandable && 'hover:bg-primary-100/60 dark:hover:bg-primary-800/60',
           !expandable && 'cursor-default',
         )}
       >
@@ -94,17 +94,17 @@ export function ToolSection({ tool }: Props) {
           {icon}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="font-mono font-medium text-primary-900">
+          <span className="font-mono font-medium text-primary-900 dark:text-primary-100">
             {tool.name}
           </span>
           {summary && (
-            <span className="ml-2 text-primary-500">{summary}</span>
+            <span className="ml-2 text-primary-500 dark:text-primary-400">{summary}</span>
           )}
         </span>
         {expandable && (
           <span
             aria-hidden="true"
-            className="flex-none text-[10px] text-primary-400 group-hover:text-primary-600"
+            className="flex-none text-[10px] text-primary-400 group-hover:text-primary-600 dark:text-primary-500 dark:group-hover:text-primary-300"
           >
             {open ? '▾' : '▸'}
           </span>
@@ -112,7 +112,7 @@ export function ToolSection({ tool }: Props) {
       </button>
 
       {open && expandable && (
-        <div className="space-y-1.5 border-t border-primary-200/60 px-2 py-2">
+        <div className="space-y-1.5 border-t border-primary-200/60 px-2 py-2 dark:border-primary-700/60">
           {Boolean(
             tool.args &&
               typeof tool.args === 'object' &&
@@ -164,7 +164,9 @@ function DetailBlock({
       <div
         className={cn(
           'mb-0.5 text-[9px] font-medium uppercase tracking-wider',
-          danger ? 'text-red-600' : 'text-primary-500',
+          danger
+            ? 'text-red-600 dark:text-red-300'
+            : 'text-primary-500 dark:text-primary-400',
         )}
       >
         {label}
@@ -172,8 +174,11 @@ function DetailBlock({
       <pre
         className={cn(
           'max-h-48 overflow-auto whitespace-pre-wrap break-words rounded bg-white/60 p-1.5 text-[11px] leading-snug ring-1 ring-primary-200/50',
+          'dark:bg-primary-950/60 dark:ring-primary-700/50',
           mono ? 'font-mono' : 'font-sans',
-          danger ? 'text-red-700' : 'text-primary-700',
+          danger
+            ? 'text-red-700 dark:text-red-200'
+            : 'text-primary-700 dark:text-primary-200',
         )}
       >
         {body}

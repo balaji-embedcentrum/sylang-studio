@@ -199,10 +199,107 @@ export function deleteLocalSession(key: string): void {
   const next = store.sessions.filter((s) => s.key !== key)
   if (next.length === store.sessions.length) return
   writeStore({ ...store, sessions: next })
+  // Also drop the messages blob — no point keeping a session's transcript
+  // for a row that no longer appears in the sidebar.
+  deleteLocalSessionMessages(key)
 }
 
 export function clearLocalSessions(): void {
   writeStore({ version: 1, sessions: [] })
+}
+
+// ─── Per-session message persistence ───────────────────────────────────────
+//
+// The fleet's per-user agent (port 9001) does NOT expose /api/sessions —
+// only OpenAI-compat /v1/chat/completions, /health, /v1/models and /ws/*.
+// So the studio's /api/history can't read message history back from the
+// agent in fleet mode; gateway-capabilities probes `sessions: false` and
+// /api/history returns `{ source: 'unavailable', messages: [] }`.
+//
+// To make the chat reload-able, we mirror the sidebar-index pattern and
+// store the messages themselves in localStorage too, keyed per-session.
+// Agent still keeps its own copy (for in-stream context); studio just
+// stops depending on the agent for read-back.
+//
+// Trade-offs (same as the sidebar index):
+//   - per-browser / per-device, no cross-device sync
+//   - clearing site data wipes history
+//   - localStorage quota is ~5 MB per origin — large transcripts with
+//     base64 attachments could blow it. We strip attachment dataUrls on
+//     persist for that reason (kept name/size/contentType only).
+
+const MESSAGES_KEY_PREFIX = 'chatv2.messages.v1.'
+
+function messagesKey(sessionKey: string): string {
+  return `${MESSAGES_KEY_PREFIX}${sessionKey}`
+}
+
+/**
+ * Strip heavy fields from messages before persisting so a single big
+ * attachment doesn't blow the 5 MB localStorage quota for the whole tab.
+ * dataUrl (base64) is dropped — the agent already has the file; on
+ * re-render we just show the name + size chip.
+ */
+function lightenMessagesForStorage(messages: ReadonlyArray<unknown>): unknown {
+  return messages.map((m) => {
+    if (!m || typeof m !== 'object') return m
+    const msg = m as Record<string, unknown>
+    const attachments = Array.isArray(msg.attachments)
+      ? (msg.attachments as Array<Record<string, unknown>>).map((a) => ({
+          ...a,
+          dataUrl: undefined,
+        }))
+      : msg.attachments
+    return { ...msg, attachments }
+  })
+}
+
+export function saveLocalSessionMessages(
+  sessionKey: string,
+  messages: ReadonlyArray<unknown>,
+): void {
+  if (!isBrowser() || !sessionKey) return
+  try {
+    const payload = JSON.stringify({
+      version: 1,
+      messages: lightenMessagesForStorage(messages),
+    })
+    localStorage.setItem(messagesKey(sessionKey), payload)
+  } catch {
+    // Quota / private mode — silently degrade. Worst case the next
+    // mount can't restore from local; agent reload remains a fallback.
+  }
+}
+
+export function getLocalSessionMessages<T = unknown>(
+  sessionKey: string,
+): Array<T> | null {
+  if (!isBrowser() || !sessionKey) return null
+  try {
+    const raw = localStorage.getItem(messagesKey(sessionKey))
+    if (!raw) return null
+    const parsed: unknown = JSON.parse(raw)
+    if (
+      !parsed ||
+      typeof parsed !== 'object' ||
+      (parsed as { version?: unknown }).version !== 1 ||
+      !Array.isArray((parsed as { messages?: unknown }).messages)
+    ) {
+      return null
+    }
+    return (parsed as { messages: Array<T> }).messages
+  } catch {
+    return null
+  }
+}
+
+export function deleteLocalSessionMessages(sessionKey: string): void {
+  if (!isBrowser() || !sessionKey) return
+  try {
+    localStorage.removeItem(messagesKey(sessionKey))
+  } catch {
+    // ignore
+  }
 }
 
 /**

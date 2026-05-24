@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { getLocalSessionMessages } from '../runtime/local-sessions'
 import type { ChatMessage, Part, ToolPart } from '../runtime/use-sylang-chat'
 
 type HydrationState =
@@ -116,10 +117,31 @@ function convertMessage(raw: ApiMessage): ChatMessage | null {
 }
 
 export function useHistoryHydration(sessionKey: string): HydrationState {
-  const [state, setState] = useState<HydrationState>({ status: 'loading' })
+  // Seed from localStorage SYNCHRONOUSLY so the panel reload instantly
+  // shows the existing transcript — no loading spinner, no flash. The
+  // fleet's agent doesn't expose /api/sessions (it's OpenAI-compat only),
+  // so /api/history returns `source: 'unavailable'` and gives us nothing.
+  // Browser-local cache is what makes click-old-session-row actually work.
+  const initial = (): HydrationState => {
+    const local = getLocalSessionMessages<ChatMessage>(sessionKey)
+    if (local && local.length > 0) {
+      return { status: 'ready', messages: local }
+    }
+    return { status: 'loading' }
+  }
+  const [state, setState] = useState<HydrationState>(initial)
 
   useEffect(() => {
     let cancelled = false
+    // Re-seed when sessionKey changes (the useState initializer only
+    // runs once per mount).
+    const local = getLocalSessionMessages<ChatMessage>(sessionKey)
+    if (local && local.length > 0) {
+      setState({ status: 'ready', messages: local })
+      return () => {
+        cancelled = true
+      }
+    }
     setState({ status: 'loading' })
     const url = `/api/history?friendlyId=${encodeURIComponent(sessionKey)}&limit=200`
     fetch(url, { cache: 'no-store', credentials: 'same-origin' })
@@ -137,6 +159,9 @@ export function useHistoryHydration(sessionKey: string): HydrationState {
       })
       .catch((err) => {
         if (cancelled) return
+        // No local AND no remote — present as ready-with-empty so the
+        // user gets a usable composer instead of a permanent loading
+        // spinner. The error string is still surfaced for debugging.
         setState({
           status: 'error',
           error: err instanceof Error ? err.message : 'failed to load history',
