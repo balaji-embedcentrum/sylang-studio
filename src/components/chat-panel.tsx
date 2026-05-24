@@ -180,7 +180,7 @@ export function ChatPanel() {
     //    (hermes_pending_msg_* for old sessions; missing this caused the
     //    previous chat's last user bubble to appear at the top of a new chat)
     try {
-      const lsKeys: string[] = []
+      const lsKeys: Array<string> = []
       for (let i = 0; i < window.localStorage.length; i++) {
         const key = window.localStorage.key(i)
         if (!key) continue
@@ -197,7 +197,7 @@ export function ChatPanel() {
 
     // 5. Clear sessionStorage streaming state
     try {
-      const keysToRemove: string[] = []
+      const keysToRemove: Array<string> = []
       for (let i = 0; i < sessionStorage.length; i++) {
         const key = sessionStorage.key(i)
         if (key?.startsWith('hermes_streaming_')) keysToRemove.push(key)
