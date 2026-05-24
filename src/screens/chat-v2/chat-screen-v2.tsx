@@ -29,6 +29,7 @@ import { useHistoryHydration } from './hooks/use-history-hydration'
 import { SessionsSidebar } from './components/sessions-sidebar'
 import { ToolSection } from './components/tool-section'
 import {
+  saveLocalSessionMessages,
   snippetFromText,
   upsertLocalSession,
 } from './runtime/local-sessions'
@@ -89,7 +90,7 @@ function fileToAttachment(file: File): Promise<Attachment> {
 // users can confirm in devtools whether the deployed bundle contains
 // the latest chat-v2 code (vs. a cached / stale build still serving an
 // older index.html). Bump the version string in PRs that change chat-v2.
-const CHAT_V2_BUILD_TAG = 'chat-v2 build #43+marker'
+const CHAT_V2_BUILD_TAG = 'chat-v2 build #50 local-messages+dark-mode'
 let chatV2BuildLogged = false
 
 export function ChatScreenV2(props: Props) {
@@ -265,6 +266,12 @@ function ChatScreenV2Inner({
       label: firstUserText ? snippetFromText(firstUserText, 60) : undefined,
       lastSnippet: latestText ? snippetFromText(latestText, 90) : null,
     })
+    // Persist the full transcript too — the fleet's agent has no
+    // /api/sessions/<id>/messages endpoint, so without this the chat
+    // can never be re-loaded after a panel close/reopen or a click
+    // back to an older session row. See local-sessions.ts for the
+    // storage shape (and why dataUrl is stripped on persist).
+    saveLocalSessionMessages(sessionKey, messages)
   }, [messages, sessionKey])
 
   const ingestFiles = useCallback(async (files: Array<File> | FileList) => {
@@ -344,25 +351,25 @@ function ChatScreenV2Inner({
 
   return (
     <div
-      className="relative flex h-full min-h-0 flex-col bg-primary-50/40"
+      className="relative flex h-full min-h-0 flex-col bg-primary-50/40 dark:bg-primary-950/40"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       {isDraggingOver && (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-accent-500/10 ring-2 ring-inset ring-accent-500">
-          <div className="rounded-lg bg-white px-4 py-2 text-sm text-accent-700 shadow-md">
+          <div className="rounded-lg bg-white px-4 py-2 text-sm text-accent-700 shadow-md dark:bg-primary-900 dark:text-accent-300">
             Drop files to attach
           </div>
         </div>
       )}
       {/* Slim header: sessions toggle only. The studio shell already has
        *  its own chat title bar above us, so this stays minimal. */}
-      <div className="flex items-center justify-between border-b border-primary-200/70 bg-white px-2 py-1">
+      <div className="flex items-center justify-between border-b border-primary-200/70 bg-white px-2 py-1 dark:border-primary-800/70 dark:bg-primary-950">
         <button
           type="button"
           onClick={onToggleSidebar}
-          className="rounded px-2 py-1 text-xs text-primary-600 hover:bg-primary-100 hover:text-primary-900"
+          className="rounded px-2 py-1 text-xs text-primary-600 hover:bg-primary-100 hover:text-primary-900 dark:text-primary-400 dark:hover:bg-primary-800 dark:hover:text-primary-100"
           aria-label={sidebarOpen ? 'Hide chat history' : 'Show chat history'}
           title={sidebarOpen ? 'Hide chat history' : 'Show chat history'}
         >
@@ -370,7 +377,7 @@ function ChatScreenV2Inner({
         </button>
       </div>
       {(error || attachmentError || hydrationError) && (
-        <div className="flex items-center justify-between gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">
+        <div className="flex items-center justify-between gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
           <span className="min-w-0 flex-1">
             {error ?? attachmentError ?? `Couldn't load history: ${hydrationError}`}
           </span>
@@ -396,7 +403,7 @@ function ChatScreenV2Inner({
                   break
                 }
               }}
-              className="flex-none rounded border border-red-300 bg-white px-2 py-0.5 text-[11px] font-medium text-red-700 hover:bg-red-100"
+              className="flex-none rounded border border-red-300 bg-white px-2 py-0.5 text-[11px] font-medium text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/60 dark:text-red-200 dark:hover:bg-red-900/60"
             >
               Retry last
             </button>
@@ -419,7 +426,7 @@ function ChatScreenV2Inner({
       )}
       <form
         onSubmit={handleSubmit}
-        className="border-t border-primary-200 bg-white px-3 py-3"
+        className="border-t border-primary-200 bg-white px-3 py-3 dark:border-primary-800 dark:bg-primary-950"
       >
         <div className="mx-auto flex max-w-3xl flex-col gap-2">
           {pendingAttachments.length > 0 && (
@@ -438,7 +445,7 @@ function ChatScreenV2Inner({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={composerDisabled}
-              className="rounded-lg border border-primary-200 bg-white p-2 text-primary-600 hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg border border-primary-200 bg-white p-2 text-primary-600 hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-primary-700 dark:bg-primary-900 dark:text-primary-300 dark:hover:bg-primary-800"
               aria-label="Attach files"
               title={noActiveSession ? 'Select an agent first' : 'Attach files'}
             >
@@ -465,13 +472,13 @@ function ChatScreenV2Inner({
                   ? '🔒  Select an agent on /agents to start chatting'
                   : 'Message the agent… (paste / drop files to attach)'
               }
-              className="flex-1 resize-none rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-950 placeholder:text-primary-400 focus:border-primary-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-primary-100/50 disabled:text-primary-500"
+              className="flex-1 resize-none rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-950 placeholder:text-primary-400 focus:border-primary-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-primary-100/50 disabled:text-primary-500 dark:border-primary-700 dark:bg-primary-900 dark:text-primary-50 dark:placeholder:text-primary-500 dark:focus:border-primary-500 dark:disabled:bg-primary-900/50 dark:disabled:text-primary-400"
             />
             {isBusy ? (
               <button
                 type="button"
                 onClick={stop}
-                className="rounded-lg border border-primary-200 bg-white px-3 py-2 text-sm text-primary-700 hover:bg-primary-100"
+                className="rounded-lg border border-primary-200 bg-white px-3 py-2 text-sm text-primary-700 hover:bg-primary-100 dark:border-primary-700 dark:bg-primary-900 dark:text-primary-200 dark:hover:bg-primary-800"
               >
                 Stop
               </button>
@@ -496,11 +503,11 @@ function ChatScreenV2Inner({
 
 function EmptyState() {
   return (
-    <div className="flex h-full items-center justify-center text-center text-primary-500">
+    <div className="flex h-full items-center justify-center text-center text-primary-500 dark:text-primary-400">
       <div>
         <div className="mb-2 text-3xl">💬</div>
         <div className="text-sm">Send a message to start the chat.</div>
-        <div className="mt-1 text-[11px] text-primary-400">
+        <div className="mt-1 text-[11px] text-primary-400 dark:text-primary-500">
           This is chat-v2 (rewritten with single source of truth).
         </div>
       </div>
@@ -516,7 +523,7 @@ function EmptyState() {
  */
 function NoAgentLockBanner({ onPickAgent }: { onPickAgent: () => void }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+    <div className="flex items-center justify-between gap-3 border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
       <span className="flex items-center gap-2">
         <span aria-hidden="true">🔒</span>
         <span>
@@ -527,7 +534,7 @@ function NoAgentLockBanner({ onPickAgent }: { onPickAgent: () => void }) {
       <button
         type="button"
         onClick={onPickAgent}
-        className="flex-none rounded border border-amber-300 bg-white px-2 py-0.5 text-[11px] font-medium text-amber-800 hover:bg-amber-100"
+        className="flex-none rounded border border-amber-300 bg-white px-2 py-0.5 text-[11px] font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200 dark:hover:bg-amber-900/60"
       >
         Pick an agent →
       </button>
@@ -543,7 +550,7 @@ function AttachmentChip({
   onRemove: () => void
 }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-primary-200 bg-primary-50 py-1 pl-1 pr-2">
+    <div className="flex items-center gap-2 rounded-lg border border-primary-200 bg-primary-50 py-1 pl-1 pr-2 dark:border-primary-700 dark:bg-primary-900">
       {attachment.isImage ? (
         <img
           src={attachment.dataUrl}
@@ -551,20 +558,22 @@ function AttachmentChip({
           className="h-10 w-10 rounded object-cover"
         />
       ) : (
-        <div className="flex h-10 w-10 items-center justify-center rounded bg-white text-base">
+        <div className="flex h-10 w-10 items-center justify-center rounded bg-white text-base dark:bg-primary-800">
           📄
         </div>
       )}
       <div className="text-xs">
-        <div className="max-w-[140px] truncate text-primary-800">
+        <div className="max-w-[140px] truncate text-primary-800 dark:text-primary-100">
           {attachment.name}
         </div>
-        <div className="text-primary-500">{formatBytes(attachment.size)}</div>
+        <div className="text-primary-500 dark:text-primary-400">
+          {formatBytes(attachment.size)}
+        </div>
       </div>
       <button
         type="button"
         onClick={onRemove}
-        className="ml-1 rounded p-1 text-primary-500 hover:bg-primary-200/60 hover:text-primary-800"
+        className="ml-1 rounded p-1 text-primary-500 hover:bg-primary-200/60 hover:text-primary-800 dark:text-primary-400 dark:hover:bg-primary-800 dark:hover:text-primary-100"
         aria-label="Remove attachment"
       >
         ×
@@ -619,7 +628,8 @@ function CopyButton({ text }: { text: string }) {
       className={cn(
         'rounded p-1 text-[11px] leading-none transition-colors',
         'text-primary-400 opacity-0 hover:bg-primary-100 hover:text-primary-700 group-hover:opacity-100',
-        copied && 'text-emerald-600 opacity-100',
+        'dark:text-primary-500 dark:hover:bg-primary-800 dark:hover:text-primary-200',
+        copied && 'text-emerald-600 opacity-100 dark:text-emerald-400',
       )}
       aria-label={copied ? 'Copied' : 'Copy message'}
       title={copied ? 'Copied!' : 'Copy'}
@@ -674,8 +684,8 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         className={cn(
           'max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm',
           isUser
-            ? 'bg-primary-200/80 text-primary-950'
-            : 'rounded-bl-sm bg-white text-primary-950 ring-1 ring-primary-100',
+            ? 'bg-primary-200/80 text-primary-950 dark:bg-primary-800 dark:text-primary-50'
+            : 'rounded-bl-sm bg-white text-primary-950 ring-1 ring-primary-100 dark:bg-primary-900 dark:text-primary-50 dark:ring-primary-700',
         )}
       >
         {message.attachments && message.attachments.length > 0 && (
@@ -708,7 +718,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 function AssistantAvatar() {
   return (
     <div
-      className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-white p-0.5 shadow-sm ring-1 ring-primary-200"
+      className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-white p-0.5 shadow-sm ring-1 ring-primary-200 dark:bg-primary-900 dark:ring-primary-700"
       aria-label="Sylang agent"
       title="Sylang agent"
     >
@@ -744,9 +754,9 @@ function ThinkingPulse() {
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary-400 [animation-delay:-0.15s]" />
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary-400" />
       </span>
-      <span className="text-xs font-medium text-primary-500">Thinking…</span>
+      <span className="text-xs font-medium text-primary-500 dark:text-primary-300">Thinking…</span>
       {elapsed > 0 && (
-        <span className="text-[10px] tabular-nums text-primary-400">
+        <span className="text-[10px] tabular-nums text-primary-400 dark:text-primary-500">
           {label}
         </span>
       )}
@@ -772,10 +782,10 @@ function AttachmentPreview({ attachment }: { attachment: Attachment }) {
     )
   }
   return (
-    <div className="inline-flex items-center gap-2 rounded-lg bg-white/60 px-2 py-1 text-xs text-primary-800 ring-1 ring-primary-200">
+    <div className="inline-flex items-center gap-2 rounded-lg bg-white/60 px-2 py-1 text-xs text-primary-800 ring-1 ring-primary-200 dark:bg-primary-900/60 dark:text-primary-100 dark:ring-primary-700">
       <span>📄</span>
       <span className="max-w-[160px] truncate">{attachment.name}</span>
-      <span className="text-primary-500">{formatBytes(attachment.size)}</span>
+      <span className="text-primary-500 dark:text-primary-400">{formatBytes(attachment.size)}</span>
     </div>
   )
 }
@@ -794,16 +804,16 @@ function PartRenderer({ part }: { part: Part }) {
     const preview = part.text.split('\n')[0].trim()
     const short = preview.length > 80 ? `${preview.slice(0, 77)}…` : preview
     return (
-      <details className="mb-2 rounded border border-primary-200/60 bg-primary-50/40 text-xs">
-        <summary className="flex cursor-pointer items-baseline gap-2 px-2 py-1.5 text-primary-700 hover:bg-primary-100/60">
+      <details className="mb-2 rounded border border-primary-200/60 bg-primary-50/40 text-xs dark:border-primary-700/60 dark:bg-primary-900/40">
+        <summary className="flex cursor-pointer items-baseline gap-2 px-2 py-1.5 text-primary-700 hover:bg-primary-100/60 dark:text-primary-200 dark:hover:bg-primary-800/60">
           <span className="font-mono text-sm">💭</span>
           <span className="font-medium">Thinking</span>
           {short && (
-            <span className="truncate text-primary-500">{short}</span>
+            <span className="truncate text-primary-500 dark:text-primary-400">{short}</span>
           )}
         </summary>
-        <div className="border-t border-primary-200/50 px-2 py-2">
-          <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded bg-white/60 p-1.5 font-sans text-[11px] leading-snug text-primary-700 ring-1 ring-primary-200/40">
+        <div className="border-t border-primary-200/50 px-2 py-2 dark:border-primary-700/50">
+          <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded bg-white/60 p-1.5 font-sans text-[11px] leading-snug text-primary-700 ring-1 ring-primary-200/40 dark:bg-primary-950/60 dark:text-primary-300 dark:ring-primary-700/40">
             {part.text}
           </pre>
         </div>
