@@ -465,6 +465,7 @@ export const Route = createFileRoute('/api/send-stream')({
             lines.push(`Use your full tool, skill, and reasoning capabilities to help`)
             lines.push(`within ${absWorkspacePath}. The directory scope is the only`)
             lines.push(`restriction.`)
+            lines.push(``)
           }
 
           lines.push(`USER-ATTACHED IMAGES:`)
@@ -476,6 +477,10 @@ export const Route = createFileRoute('/api/send-stream')({
           lines.push(`user-provided attachments meant for you to look at. The general`)
           lines.push(`/tmp prohibition still applies to every other /tmp path.`)
           lines.push(``)
+          lines.push(`SKILLS AVAILABLE:`)
+          lines.push(`Sylang and Jot skills are already installed in your skills folder.`)
+          lines.push(`For any Sylang or Jot related work, consult those skills first`)
+          lines.push(`instead of guessing syntax or conventions.`)
 
           workspaceContextNote = lines.join('\n')
         }
