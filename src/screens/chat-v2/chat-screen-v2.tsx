@@ -24,6 +24,7 @@ import {
   type Part,
 } from './runtime/use-sylang-chat'
 import { useHistoryHydration } from './hooks/use-history-hydration'
+import { SessionsSidebar } from './components/sessions-sidebar'
 import { Markdown } from '@/components/prompt-kit/markdown'
 import { cn } from '@/lib/utils'
 
@@ -74,8 +75,11 @@ export function ChatScreenV2(props: Props) {
 
   if (hydration.status === 'loading') {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-primary-400">
-        Loading conversation…
+      <div className="flex h-full min-h-0">
+        <SessionsSidebar currentSessionKey={props.sessionKey} />
+        <div className="flex flex-1 items-center justify-center text-sm text-primary-400">
+          Loading conversation…
+        </div>
       </div>
     )
   }
@@ -89,14 +93,21 @@ export function ChatScreenV2(props: Props) {
     hydration.status === 'error' ? hydration.error : null
 
   // key={sessionKey} forces a clean useSylangChat remount when the
-  // session changes (sessions sidebar in stage 3a will rely on this).
+  // session changes via the sessions sidebar — fresh state, fresh
+  // history-hydrated initial messages, no leakage from the previous
+  // thread.
   return (
-    <ChatScreenV2Inner
-      key={props.sessionKey}
-      {...props}
-      initialMessages={initialMessages}
-      hydrationError={hydrationError}
-    />
+    <div className="flex h-full min-h-0">
+      <SessionsSidebar currentSessionKey={props.sessionKey} />
+      <div className="min-w-0 flex-1">
+        <ChatScreenV2Inner
+          key={props.sessionKey}
+          {...props}
+          initialMessages={initialMessages}
+          hydrationError={hydrationError}
+        />
+      </div>
+    </div>
   )
 }
 
