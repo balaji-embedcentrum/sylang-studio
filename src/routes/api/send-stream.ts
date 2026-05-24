@@ -467,6 +467,16 @@ export const Route = createFileRoute('/api/send-stream')({
             lines.push(`restriction.`)
           }
 
+          lines.push(`USER-ATTACHED IMAGES:`)
+          lines.push(`When the user pastes or uploads an image, the studio persists`)
+          lines.push(`it to /tmp/hermes_inbound_images/<uuid>.<ext> and references the`)
+          lines.push(`path in the user message as a [image: /tmp/hermes_inbound_images/...]`)
+          lines.push(`marker. Those specific files are SAFE to read with the Read tool`)
+          lines.push(`even though the general /tmp prohibition above stands — they are`)
+          lines.push(`user-provided attachments meant for you to look at. The general`)
+          lines.push(`/tmp prohibition still applies to every other /tmp path.`)
+          lines.push(``)
+
           workspaceContextNote = lines.join('\n')
         }
 
