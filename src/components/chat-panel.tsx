@@ -346,6 +346,14 @@ export function ChatPanel() {
                 key={`${activeFriendlyId}-${chatResetCounter}`}
                 sessionKey={activeFriendlyId}
                 friendlyId={activeFriendlyId}
+                onSelectSession={(key) => {
+                  // Panel context: swap the panel's session in place
+                  // instead of navigating to /chat/$sessionKey (which
+                  // would take the user out of their editor). The key
+                  // change on ChatScreenV2 forces a clean remount with
+                  // fresh history hydration for the picked session.
+                  setChatPanelSessionKey(key)
+                }}
               />
               {/* Session-ended overlay */}
               {hasSession === false && (
