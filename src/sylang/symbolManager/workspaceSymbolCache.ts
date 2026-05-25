@@ -400,8 +400,10 @@ export async function getWorkspaceManager(
     existing.lastAccessed = Date.now()
     // If still initializing, wait for it
     if (existing.initializing) await existing.initializing
+    console.info(`[SymCache] HIT  key="${cacheKey}"`)
     return existing.manager
   }
+  console.info(`[SymCache] MISS key="${cacheKey}" — initialising`)
 
   // Build the right FileOps:
   //   With agent URL: BatchAgentFileOps — one HTTP call to GET /ws/{repo}/symbols.
@@ -494,13 +496,25 @@ export function removeCachedDocument(
 
 /**
  * Invalidate (evict) the cache for a workspace across all agents.
- * Call after destructive operations (clone, bulk write, git pull).
+ * Call after destructive operations (clone, bulk write, git pull) AND at
+ * the start of every diagram / variant-matrix fetch — the latter so the
+ * caller always sees the agent's current filesystem state.
  */
 export function invalidateWorkspace(workspacePath: string): void {
   const parsed = parseCacheKey(workspacePath)
-  if (!parsed) return
-  const suffix = `|${parsed.workspacePrefix}`
-  for (const key of cache.keys()) {
-    if (key.endsWith(suffix)) cache.delete(key)
+  if (!parsed) {
+    console.info(`[SymCache] invalidateWorkspace: no parse for "${workspacePath}" — noop`)
+    return
   }
+  const suffix = `|${parsed.workspacePrefix}`
+  let evicted = 0
+  for (const key of cache.keys()) {
+    if (key.endsWith(suffix)) {
+      cache.delete(key)
+      evicted++
+    }
+  }
+  console.info(
+    `[SymCache] invalidateWorkspace prefix="${parsed.workspacePrefix}" evicted=${evicted} (cache size now ${cache.size})`,
+  )
 }

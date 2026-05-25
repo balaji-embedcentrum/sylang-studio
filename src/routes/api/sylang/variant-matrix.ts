@@ -25,6 +25,7 @@ import { getAuthUser } from '../../../server/supabase-auth'
 import { getAgentConfig } from '../../../server/gateway-capabilities'
 import {
   getWorkspaceManager,
+  invalidateWorkspace,
   updateCachedDocument,
 } from '../../../sylang/symbolManager/workspaceSymbolCache'
 import type { ServerSymbolManager } from '../../../sylang/symbolManager/workspaceSymbolCache'
@@ -87,6 +88,10 @@ export const Route = createFileRoute('/api/sylang/variant-matrix')({
         if (!rawPath) return json({ ok: false, error: 'path param required' }, { status: 400 })
 
         const agentConfig = await getAgentConfig(authUser.userId).catch(() => null)
+        // Force re-init so the matrix reflects whatever's on the agent's
+        // filesystem right now (including agent or editor writes since the
+        // last fetch). See the matching comment in diagram.ts.
+        invalidateWorkspace(rawPath)
         const manager = await getWorkspaceManager(rawPath, {
           url: agentConfig?.url ?? null,
           apiKey: agentConfig?.apiKey,
@@ -123,6 +128,11 @@ export const Route = createFileRoute('/api/sylang/variant-matrix')({
         }
 
         async function loadManager(filePath: string): Promise<ServerSymbolManager> {
+          // Same reason as the GET branch: mutations need to compute against
+          // the file's CURRENT contents, not whatever was cached when the
+          // workspace was first opened. Otherwise toggleFeatureInVml /
+          // createVariantVml would derive new content from a stale base.
+          invalidateWorkspace(filePath)
           const m = await getWorkspaceManager(filePath, agent)
           if (!m) throw new Error('Invalid workspace path')
           return m

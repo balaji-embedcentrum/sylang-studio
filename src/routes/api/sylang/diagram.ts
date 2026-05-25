@@ -14,7 +14,10 @@ import { WebDiagramTransformer, DiagramType } from '@sylang/diagrams'
 import type { ISylangLogger } from '@sylang/core'
 import { getAuthUser } from '../../../server/supabase-auth'
 import { getAgentConfig } from '../../../server/gateway-capabilities'
-import { getWorkspaceManager } from '../../../sylang/symbolManager/workspaceSymbolCache'
+import {
+  getWorkspaceManager,
+  invalidateWorkspace,
+} from '../../../sylang/symbolManager/workspaceSymbolCache'
 
 const logger: ISylangLogger = {
   l1: (m) => console.info('[Diagram]', m),
@@ -60,6 +63,14 @@ export const Route = createFileRoute('/api/sylang/diagram')({
         }
 
         const agentConfig = await getAgentConfig(authUser.userId).catch(() => null)
+        // Always evict the cached symbol graph before serving a diagram.
+        // The cache exists to skip re-parsing across the SAME request, not
+        // to memoise across the agent's editing session — by the time the
+        // user clicks into a diagram they've usually just had the agent
+        // change something, and we'd rather pay one HTTP roundtrip per open
+        // than ever show stale geometry. Cheaper than the user logging out
+        // to force a refresh, which was the workaround before.
+        invalidateWorkspace(filePath)
         const manager = await getWorkspaceManager(filePath, {
           url: agentConfig?.url ?? null,
           apiKey: agentConfig?.apiKey,
