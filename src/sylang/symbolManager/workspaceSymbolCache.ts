@@ -149,6 +149,32 @@ class BatchAgentFileOps implements FileOps {
   private async fetchAll(): Promise<void> {
     if (this.fetchPromise) return this.fetchPromise
     this.fetchPromise = (async () => {
+      // The adapter caches its own /symbols response. Direct disk writes
+      // — which is what the agent's write_file tool does — DO NOT bust
+      // that cache (see hermes-adapter/tests/test_symbols_cache.py). So
+      // we always POST /symbols/invalidate first to force the adapter to
+      // rebuild from whatever is on disk RIGHT NOW. Without this step the
+      // GET below returns the same bytes the adapter had at first load
+      // and the studio reparses stale content.
+      const invalidateResp = await fetch(
+        `${this.hermesUrl}/ws/${encodeURIComponent(this.repo)}/symbols/invalidate`,
+        { method: 'POST', headers: this.headers() },
+      ).catch((e) => {
+        // Older adapter builds (pre-cache-invalidate) won't have this
+        // endpoint. Log and continue — the GET below still returns
+        // whatever cached state the adapter has, which is the current
+        // behaviour without this PR.
+        console.warn(
+          `[BatchAgentFileOps] /symbols/invalidate POST failed (${e}). Adapter may be on an older build.`,
+        )
+        return null
+      })
+      if (invalidateResp && !invalidateResp.ok && invalidateResp.status !== 404) {
+        console.warn(
+          `[BatchAgentFileOps] /symbols/invalidate returned HTTP ${invalidateResp.status} — adapter cache may be stale`,
+        )
+      }
+
       const r = await fetch(
         `${this.hermesUrl}/ws/${encodeURIComponent(this.repo)}/symbols`,
         { headers: this.headers() },
@@ -379,11 +405,22 @@ export interface AgentLocator {
 }
 
 /**
- * Get the cached workspace symbol manager, initialising it on first call.
- * All server routes should call this instead of creating their own managers.
+ * Get a fully-initialised workspace symbol manager.
  *
- * The agent URL is per-user (not a global env var) — pass it explicitly so
- * the cache stays correct even if multiple users hit the same backend.
+ * IMPORTANT — this function ALWAYS performs a fresh init. The cache below
+ * exists only so that an in-flight init for the same workspace from a
+ * concurrent request can share the work, not to memoize across requests.
+ * Every call evicts any prior entry first; the rebuild then re-runs the
+ * full /ws/{repo}/symbols fetch (the adapter cache is busted inside
+ * BatchAgentFileOps.fetchAll) and reparses every file.
+ *
+ * This is intentional. Earlier versions kept the manager across requests
+ * for performance, but all 9 consumer endpoints (diagrams, matrices,
+ * traceability, FMEA, spec/dash render, coverage, symbols, symbol-details)
+ * read through this single entry point — caching meant agent or editor
+ * writes wouldn't surface to ANY view until a TTL eviction or logout.
+ * Cost of fresh init is one /symbols HTTP call + parse, typically <1s
+ * for a real workspace. Same cost a project switch already pays.
  */
 export async function getWorkspaceManager(
   workspacePath: string,
@@ -391,6 +428,11 @@ export async function getWorkspaceManager(
 ): Promise<ServerSymbolManager | null> {
   const parsed = parseCacheKey(workspacePath)
   if (!parsed) return null
+
+  // Force fresh state on every call. If a concurrent request is in the
+  // middle of an init for the same workspace, the cache lookup below will
+  // still find its in-flight `initializing` promise and share the work.
+  invalidateWorkspace(workspacePath)
 
   const { repo, workspacePrefix } = parsed
   const cacheKey = buildCacheKey(workspacePrefix, agent.url)
@@ -400,8 +442,10 @@ export async function getWorkspaceManager(
     existing.lastAccessed = Date.now()
     // If still initializing, wait for it
     if (existing.initializing) await existing.initializing
+    console.info(`[SymCache] HIT (concurrent init) key="${cacheKey}"`)
     return existing.manager
   }
+  console.info(`[SymCache] MISS key="${cacheKey}" — initialising (always-fresh mode)`)
 
   // Build the right FileOps:
   //   With agent URL: BatchAgentFileOps — one HTTP call to GET /ws/{repo}/symbols.

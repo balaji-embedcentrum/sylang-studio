@@ -90,7 +90,7 @@ function fileToAttachment(file: File): Promise<Attachment> {
 // users can confirm in devtools whether the deployed bundle contains
 // the latest chat-v2 code (vs. a cached / stale build still serving an
 // older index.html). Bump the version string in PRs that change chat-v2.
-const CHAT_V2_BUILD_TAG = 'chat-v2 build #52 lock-unless-session-known'
+const CHAT_V2_BUILD_TAG = 'chat-v2 build #58 sylang-busts-adapter-cache'
 let chatV2BuildLogged = false
 
 export function ChatScreenV2(props: Props) {
