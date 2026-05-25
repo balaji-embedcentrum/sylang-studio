@@ -25,8 +25,9 @@ import { getAuthUser } from '../../../server/supabase-auth'
 import { getAgentConfig } from '../../../server/gateway-capabilities'
 import {
   getWorkspaceManager,
-  type ServerSymbolManager,
+  updateCachedDocument,
 } from '../../../sylang/symbolManager/workspaceSymbolCache'
+import type { ServerSymbolManager } from '../../../sylang/symbolManager/workspaceSymbolCache'
 
 interface AgentLocator {
   url: string | null
@@ -62,15 +63,16 @@ async function writeViaAgent(
 }
 
 async function commitMutation(
-  manager: ServerSymbolManager,
   agent: AgentLocator,
   filePath: string,
   newContent: string,
 ): Promise<void> {
   await writeViaAgent(agent, filePath, newContent)
-  // Keep the in-memory cache in sync so subsequent matrix fetches reflect
-  // the just-written file (otherwise users see stale selections).
-  await manager.parseContent(filePath, newContent).catch(() => {})
+  // Route through the cache helper rather than calling parseContent on the
+  // local manager only: this updates every cache entry for the workspace
+  // (covers users who have switched agents mid-session) AND re-resolves
+  // cross-file `use` imports so other docs see the new symbols.
+  await updateCachedDocument(filePath, filePath, newContent).catch(() => {})
 }
 
 export const Route = createFileRoute('/api/sylang/variant-matrix')({
@@ -145,7 +147,7 @@ export const Route = createFileRoute('/api/sylang/variant-matrix')({
                 featureId,
                 selected,
               )
-              await commitMutation(manager, agent, result.variantPath, result.newContent)
+              await commitMutation(agent, result.variantPath, result.newContent)
               return json({
                 ok: true,
                 type: 'featureToggled',
@@ -173,7 +175,7 @@ export const Route = createFileRoute('/api/sylang/variant-matrix')({
                 description: typeof body.description === 'string' ? body.description : '',
                 owner: typeof body.owner === 'string' ? body.owner : '',
               })
-              await commitMutation(manager, agent, result.vmlPath, result.vmlContent)
+              await commitMutation(agent, result.vmlPath, result.vmlContent)
               return json({
                 ok: true,
                 type: 'variantCreated',
@@ -191,7 +193,7 @@ export const Route = createFileRoute('/api/sylang/variant-matrix')({
               }
               const manager = await loadManager(vmlPath)
               const result = await generateVcfFromVml(manager, vmlPath, variantName)
-              await commitMutation(manager, agent, result.vcfPath, result.vcfContent)
+              await commitMutation(agent, result.vcfPath, result.vcfContent)
               return json({ ok: true, type: 'vcfGenerated', vcfPath: result.vcfPath })
             }
 
