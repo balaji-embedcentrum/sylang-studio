@@ -54,6 +54,16 @@ const SYLANG_EXTS = new Set([
   '.ifc', '.itm', '.ple', '.sam', '.seq', '.sgl',
   '.smd', '.spec', '.spr', '.tst', '.ucd', '.vcf', '.vml', '.fta', '.flr', '.dash',
 ])
+
+/**
+ * True if `filePath` ends in a Sylang extension the symbol manager cares about.
+ * Used by API route handlers to skip cache invalidation for non-Sylang writes
+ * (.json/.md/.png etc.) — those can't change the symbol graph anyway, and
+ * parsing them would just bloat the documents map with empty entries.
+ */
+export function isSylangFile(filePath: string): boolean {
+  return SYLANG_EXTS.has(path.extname(filePath).toLowerCase())
+}
 const IGNORED = new Set(['.git', 'node_modules', '.next', 'dist', '.turbo', '.cache'])
 
 async function walkDirForExts(dir: string, exts: Set<string>, results: string[], depth = 0): Promise<void> {
@@ -216,6 +226,33 @@ export class ServerSymbolManager extends SylangSymbolManagerCore {
   }
 
   /**
+   * Drop all knowledge of `filePath` from the manager — document entry,
+   * global identifiers, and cross-file dependency edges.
+   *
+   * Callers should follow with `clearImportResolutions()` + `resolveAllImports()`
+   * if the deleted file was a header that other docs `use`d.
+   */
+  removeDocument(filePath: string): void {
+    this.documents.delete(filePath)
+    this.removeGlobalIdentifiersForFile(filePath)
+    this.removeDependenciesForFile(filePath)
+  }
+
+  /**
+   * Clear cached `use`-import resolutions across every document so the next
+   * `resolveAllImports()` call rebuilds them from scratch. Needed after an
+   * incremental update or remove, because any document that imported the
+   * changed file still holds references to its OLD symbol objects.
+   */
+  clearImportResolutions(): void {
+    for (const doc of this.documents.values()) {
+      for (const imp of doc.importedSymbols) {
+        imp.importedSymbols = []
+      }
+    }
+  }
+
+  /**
    * Resolve `use` imports: for each `importedSymbols` entry in every document,
    * find the referenced header document and populate the children (def symbols).
    *
@@ -370,6 +407,10 @@ export async function getWorkspaceManager(
  * Update a single document in the cache after a file save.
  * Called from /api/files POST handler. Updates every cache entry for the
  * workspace prefix (covers any agent the user might have hit).
+ *
+ * After re-parsing, cross-file `use` imports are re-resolved so that other
+ * documents that imported symbols from `filePath` see the fresh definitions
+ * instead of holding references to the previous parse's symbol objects.
  */
 export async function updateCachedDocument(
   workspacePath: string,
@@ -383,12 +424,36 @@ export async function updateCachedDocument(
     if (!key.endsWith(suffix)) continue
     if (entry.initializing) continue
     await entry.manager.parseContent(filePath, content)
+    entry.manager.clearImportResolutions()
+    entry.manager.resolveAllImports()
+  }
+}
+
+/**
+ * Drop a deleted file from the cache across all agents for the workspace.
+ * Mirrors `updateCachedDocument` for the delete/move-source case: clears the
+ * document, its globals, and its dependency edges, then re-resolves imports
+ * so anything that `use`d the deleted file shows up as unresolved.
+ */
+export function removeCachedDocument(
+  workspacePath: string,
+  filePath: string,
+): void {
+  const parsed = parseCacheKey(workspacePath)
+  if (!parsed) return
+  const suffix = `|${parsed.workspacePrefix}`
+  for (const [key, entry] of cache.entries()) {
+    if (!key.endsWith(suffix)) continue
+    if (entry.initializing) continue
+    entry.manager.removeDocument(filePath)
+    entry.manager.clearImportResolutions()
+    entry.manager.resolveAllImports()
   }
 }
 
 /**
  * Invalidate (evict) the cache for a workspace across all agents.
- * Call after destructive operations (clone, bulk write).
+ * Call after destructive operations (clone, bulk write, git pull).
  */
 export function invalidateWorkspace(workspacePath: string): void {
   const parsed = parseCacheKey(workspacePath)
