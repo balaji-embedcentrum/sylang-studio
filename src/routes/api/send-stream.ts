@@ -631,6 +631,15 @@ export const Route = createFileRoute('/api/send-stream')({
                       // is the only signal we get — `/api/files` never fires
                       // for agent-initiated writes. Next diagram/matrix fetch
                       // will re-init from the agent's fresh state.
+                      if (t.phase === 'complete') {
+                        console.info(
+                          `[send-stream/portable] tool complete name="${t.name ?? '?'}" workspace="${workspaceRelPath || '(none)'}" willInvalidate=${
+                            !!workspaceRelPath &&
+                            typeof t.name === 'string' &&
+                            FILE_MUTATING_TOOLS.has(t.name)
+                          }`,
+                        )
+                      }
                       if (
                         t.phase === 'complete' &&
                         workspaceRelPath &&
@@ -895,6 +904,11 @@ export const Route = createFileRoute('/api/send-stream')({
                       const resultPreview = getToolResultPreview(data)
                       // Same rationale as the portable-mode branch above:
                       // agent file mutations only show up here.
+                      console.info(
+                        `[send-stream/local] tool.completed name="${toolName}" workspace="${workspaceRelPath || '(none)'}" willInvalidate=${
+                          !!workspaceRelPath && FILE_MUTATING_TOOLS.has(toolName)
+                        }`,
+                      )
                       if (workspaceRelPath && FILE_MUTATING_TOOLS.has(toolName)) {
                         invalidateWorkspace(workspaceRelPath)
                       }
