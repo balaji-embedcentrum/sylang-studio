@@ -126,6 +126,21 @@ class BatchAgentFileOps implements FileOps {
     private apiKey?: string,
   ) {}
 
+  /**
+   * Replace the cached content for a single file. Called after a successful
+   * write so downstream consumers that read raw text via `readFile()` —
+   * WebDiagramTransformer, variant-matrix compute, anything else — see the
+   * new content instead of the stale batch-loaded copy.
+   */
+  setContent(filePath: string, content: string): void {
+    this.contentCache.set(filePath, content)
+  }
+
+  /** Drop a cached file (after delete / move-source). */
+  deleteContent(filePath: string): void {
+    this.contentCache.delete(filePath)
+  }
+
   private headers(): Record<string, string> {
     return this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}
   }
@@ -223,6 +238,26 @@ export class ServerSymbolManager extends SylangSymbolManagerCore {
   /** Read a file via the same FileOps used during init (works for both local and remote) */
   readFile(filePath: string): Promise<string> {
     return this.fileOps.readFile(filePath)
+  }
+
+  /**
+   * After a successful write, sync the underlying FileOps content cache so
+   * that downstream consumers (diagram transformer, variant-matrix compute)
+   * which read raw text via `readFile()` see the fresh content. For
+   * `BatchAgentFileOps` this updates its in-memory Map; for `NodeFileOps`
+   * there is no cache to update — reads go straight to disk.
+   */
+  syncFileContent(filePath: string, content: string): void {
+    if (this.fileOps instanceof BatchAgentFileOps) {
+      this.fileOps.setContent(filePath, content)
+    }
+  }
+
+  /** Mirror of `syncFileContent` for the delete / move-source path. */
+  forgetFileContent(filePath: string): void {
+    if (this.fileOps instanceof BatchAgentFileOps) {
+      this.fileOps.deleteContent(filePath)
+    }
   }
 
   /**
@@ -423,6 +458,11 @@ export async function updateCachedDocument(
   for (const [key, entry] of cache.entries()) {
     if (!key.endsWith(suffix)) continue
     if (entry.initializing) continue
+    // Update both layers: the parsed `documents` map (used for symbol
+    // lookups) AND the underlying FileOps content cache (used by diagram
+    // transformer + variant-matrix when they pull raw text). Skipping the
+    // second layer was the Phase 1 miss — diagrams kept seeing stale text.
+    entry.manager.syncFileContent(filePath, content)
     await entry.manager.parseContent(filePath, content)
     entry.manager.clearImportResolutions()
     entry.manager.resolveAllImports()
@@ -445,6 +485,7 @@ export function removeCachedDocument(
   for (const [key, entry] of cache.entries()) {
     if (!key.endsWith(suffix)) continue
     if (entry.initializing) continue
+    entry.manager.forgetFileContent(filePath)
     entry.manager.removeDocument(filePath)
     entry.manager.clearImportResolutions()
     entry.manager.resolveAllImports()
