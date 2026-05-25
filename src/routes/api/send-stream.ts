@@ -12,6 +12,7 @@ import {
 } from '../../server/send-run-tracker'
 import { getChatMode } from '../../server/gateway-capabilities'
 import { validateSession } from '../../server/agent-sessions'
+import { invalidateWorkspace } from '../../sylang/symbolManager/workspaceSymbolCache'
 import {
   
   
@@ -28,6 +29,18 @@ import type {OpenAICompatContentPart, OpenAICompatMessage} from '../../server/op
 // Hermes agent runs can take 5+ minutes with complex tool chains
 const SEND_STREAM_RUN_TIMEOUT_MS = 600_000
 const SESSION_BOOTSTRAP_KEYS = new Set(['main', 'new'])
+
+/**
+ * Tool names that mutate files on the agent's filesystem.
+ *
+ * The agent runs on a VPS, applies these tools directly to disk, and only
+ * tells the studio about them via streaming `tool` SSE frames — never via
+ * `/api/files`. So this list is the studio's ONLY signal that workspace
+ * symbols may now be stale and need re-reading.
+ *
+ * Keep in sync with hermes-agent/tools/file_tools.py registry.
+ */
+const FILE_MUTATING_TOOLS = new Set(['write_file', 'patch'])
 
 function readString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
@@ -612,6 +625,20 @@ export const Route = createFileRoute('/api/send-stream')({
                       // tool — forward to chat-v2 so it can render the tool
                       // card without waiting for the final assistant message.
                       const t = chunk.tool
+                      // If the agent just modified a file, drop our cached
+                      // symbol graph for this workspace. The agent writes
+                      // directly to its own filesystem, so this stream event
+                      // is the only signal we get — `/api/files` never fires
+                      // for agent-initiated writes. Next diagram/matrix fetch
+                      // will re-init from the agent's fresh state.
+                      if (
+                        t.phase === 'complete' &&
+                        workspaceRelPath &&
+                        typeof t.name === 'string' &&
+                        FILE_MUTATING_TOOLS.has(t.name)
+                      ) {
+                        invalidateWorkspace(workspaceRelPath)
+                      }
                       sendEvent('tool', {
                         phase: t.phase,
                         name: t.name,
@@ -866,6 +893,11 @@ export const Route = createFileRoute('/api/send-stream')({
                     if (event === 'tool.completed') {
                       const toolName = getToolName(data)
                       const resultPreview = getToolResultPreview(data)
+                      // Same rationale as the portable-mode branch above:
+                      // agent file mutations only show up here.
+                      if (workspaceRelPath && FILE_MUTATING_TOOLS.has(toolName)) {
+                        invalidateWorkspace(workspaceRelPath)
+                      }
                       const translated = {
                         phase: 'complete',
                         name: toolName,
