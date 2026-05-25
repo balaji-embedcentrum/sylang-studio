@@ -239,6 +239,15 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
   // workspace and to translate symbol-id navigation back into a file path.
   const workspacePrefix = filePath.split('/').filter(Boolean).slice(0, 3).join('/')
 
+  // Incremented when the user hits the manual "Reload" button. Plumbed into
+  // both the doc-load effect (re-fetches file content from /api/files) and
+  // as a React `key` on the iframe + inline view (forces full remount, so
+  // anything they read — blocks, diagrams, matrices, FMEA — re-issues its
+  // fetches against the always-fresh server cache landed in #58). Use this
+  // when the agent has edited files in the background and the open view
+  // looks stale; no need to switch projects or log out anymore.
+  const [refreshNonce, setRefreshNonce] = useState(0)
+
   // Reset the active inline view whenever the user navigates to a
   // different sylang file. Without this, opening File A → switching to
   // its FMEA view → opening File B would leave File B showing File A's
@@ -285,7 +294,7 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
     return () => {
       cancelled = true
     }
-  }, [filePath, fileExtension, localAgentUrl, activeWorkspacePath])
+  }, [filePath, fileExtension, localAgentUrl, activeWorkspacePath, refreshNonce])
 
   const handleChange = (next: unknown) => {
     setDoc(next as SylangTiptapDocument)
@@ -381,7 +390,12 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
               </div>
             }
           >
-            <InlineView view={activeView} workspace={workspacePrefix} onNavigate={onNavigate} />
+            <InlineView
+              key={`inline-${refreshNonce}`}
+              view={activeView}
+              workspace={workspacePrefix}
+              onNavigate={onNavigate}
+            />
           </Suspense>
         </div>
       )}
@@ -390,20 +404,37 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
           action toolbar (refresh / search / download / overflow). Adding
           another header stripe here stacks two of them and pushes the
           hermes-studio top bar (session timer / branding) off-screen.
-          Save status moves to a small floating badge instead. */}
+          Save status + manual reload move to small floating badges instead. */}
 
-      {!activeView && saveStatus && !loading && !error && (
-        <div
-          className="absolute top-2 right-3 z-10 px-2 py-0.5 rounded text-[11px] font-medium pointer-events-none"
-          style={{
-            background: 'var(--theme-sidebar, rgba(0,0,0,0.6))',
-            color: 'var(--theme-muted, #9ca3af)',
-            border: '1px solid var(--theme-border, rgba(255,255,255,0.1))',
-          }}
-        >
-          {saveStatus === 'saving' && 'Saving…'}
-          {saveStatus === 'saved' && '✓ Saved'}
-          {saveStatus === 'unsaved' && '● Unsaved'}
+      {!loading && !error && (
+        <div className="absolute top-2 right-3 z-10 flex items-center gap-2">
+          {!activeView && saveStatus && (
+            <div
+              className="px-2 py-0.5 rounded text-[11px] font-medium pointer-events-none"
+              style={{
+                background: 'var(--theme-sidebar, rgba(0,0,0,0.6))',
+                color: 'var(--theme-muted, #9ca3af)',
+                border: '1px solid var(--theme-border, rgba(255,255,255,0.1))',
+              }}
+            >
+              {saveStatus === 'saving' && 'Saving…'}
+              {saveStatus === 'saved' && '✓ Saved'}
+              {saveStatus === 'unsaved' && '● Unsaved'}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setRefreshNonce((n) => n + 1)}
+            title="Re-read file from disk and re-parse symbols. Use this if an agent edited files and the view looks stale."
+            className="px-2 py-0.5 rounded text-[11px] font-medium cursor-pointer transition-colors"
+            style={{
+              background: 'var(--theme-sidebar, rgba(0,0,0,0.6))',
+              color: 'var(--theme-fg, #e5e7eb)',
+              border: '1px solid var(--theme-border, rgba(255,255,255,0.1))',
+            }}
+          >
+            ↻ Reload
+          </button>
         </div>
       )}
 
@@ -431,6 +462,7 @@ export function SylangFileEditor({ filePath, fileName, focusSymbolId, onNavigate
       {!activeView && doc && !loading && !error && (
         <div ref={editorContainerRef} className="flex-1 min-h-0">
           <SylangEditor
+            key={`editor-${refreshNonce}`}
             document={doc}
             fileExtension={fileExtension}
             fileName={fileName}
