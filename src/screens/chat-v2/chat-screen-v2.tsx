@@ -90,7 +90,7 @@ function fileToAttachment(file: File): Promise<Attachment> {
 // users can confirm in devtools whether the deployed bundle contains
 // the latest chat-v2 code (vs. a cached / stale build still serving an
 // older index.html). Bump the version string in PRs that change chat-v2.
-const CHAT_V2_BUILD_TAG = 'chat-v2 build #59 sylang-editor-refresh'
+const CHAT_V2_BUILD_TAG = 'chat-v2 build #60 chat-lock-requires-agent-and-project'
 let chatV2BuildLogged = false
 
 export function ChatScreenV2(props: Props) {
@@ -217,20 +217,19 @@ function ChatScreenV2Inner({
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const isBusy = status === 'sending' || status === 'streaming'
 
-  // Lock the chat unless the user *positively* has an active agent
-  // session. PR #48's original condition only locked when hasSession was
-  // strictly `false`, leaving the chat enabled during:
-  //   • the initial probe (hasSession === null)
-  //   • a stale prior session that was already ended (hasSession === true
-  //     until useActiveSession re-probes on next focus/realtime)
-  // User reported the panel composer being usable on the /agents page
-  // before any agent was picked. So flip the polarity: lock unless we
-  // positively know a session exists. Probe runs on mount + focus +
-  // realtime / storage events, so the lock clears within a frame of the
-  // session actually being claimed.
+  // Lock the chat until the user has BOTH:
+  //   • an active agent session (or a local-agent URL), AND
+  //   • a project selected (workspacePath).
+  //
+  // Treat the initial probe (hasSession === null) as "no agent yet" so
+  // the composer stays locked through the first roundtrip — a stray click
+  // landing before the probe resolves would otherwise sneak through.
+  // useActiveSession re-probes on mount + focus + realtime / storage, so
+  // the lock clears within a frame of the session actually being claimed.
   const { hasSession } = useActiveSession()
   const noActiveSession = !localAgentUrl && hasSession !== true
-  const composerDisabled = isBusy || noActiveSession
+  const noWorkspace = !workspacePath
+  const composerDisabled = isBusy || noActiveSession || noWorkspace
   const navigate = useNavigate()
 
   useLayoutEffect(() => {
@@ -428,8 +427,13 @@ function ChatScreenV2Inner({
           </div>
         )}
       </div>
-      {noActiveSession && (
-        <NoAgentLockBanner onPickAgent={() => navigate({ to: '/agents' })} />
+      {(noActiveSession || noWorkspace) && (
+        <ChatLockBanner
+          noActiveSession={noActiveSession}
+          noWorkspace={noWorkspace}
+          onPickAgent={() => navigate({ to: '/agents' })}
+          onPickProject={() => navigate({ to: '/projects' })}
+        />
       )}
       <form
         onSubmit={handleSubmit}
@@ -454,7 +458,15 @@ function ChatScreenV2Inner({
               disabled={composerDisabled}
               className="rounded-lg border border-primary-200 bg-white p-2 text-primary-600 hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-primary-700 dark:bg-primary-900 dark:text-primary-300 dark:hover:bg-primary-800"
               aria-label="Attach files"
-              title={noActiveSession ? 'Select an agent first' : 'Attach files'}
+              title={
+                noActiveSession && noWorkspace
+                  ? 'Pick an agent and a project first'
+                  : noActiveSession
+                    ? 'Select an agent first'
+                    : noWorkspace
+                      ? 'Select a project first'
+                      : 'Attach files'
+              }
             >
               📎
             </button>
@@ -475,9 +487,13 @@ function ChatScreenV2Inner({
               autoFocus={!composerDisabled}
               disabled={composerDisabled}
               placeholder={
-                noActiveSession
-                  ? '🔒  Select an agent on /agents to start chatting'
-                  : 'Message the agent… (paste / drop files to attach)'
+                noActiveSession && noWorkspace
+                  ? '🔒  Pick an agent and a project to start chatting'
+                  : noActiveSession
+                    ? '🔒  Select an agent on /agents to start chatting'
+                    : noWorkspace
+                      ? '🔒  Select a project on /projects to start chatting'
+                      : 'Message the agent… (paste / drop files to attach)'
               }
               className="flex-1 resize-none rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-950 placeholder:text-primary-400 focus:border-primary-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-primary-100/50 disabled:text-primary-500 dark:border-primary-700 dark:bg-primary-900 dark:text-primary-50 dark:placeholder:text-primary-500 dark:focus:border-primary-500 dark:disabled:bg-primary-900/50 dark:disabled:text-primary-400"
             />
@@ -523,27 +539,54 @@ function EmptyState() {
 }
 
 /**
- * Slim banner shown above the composer when the user has no active agent
- * session — mirrors v1's lock behaviour. Clicking "Pick an agent" sends
- * them to /agents where they can claim one; the lock clears automatically
- * via useActiveSession's realtime + focus listeners.
+ * Banner shown above the composer when the chat is locked because either
+ * (or both of) the agent and project haven't been picked yet. Clicking
+ * the action button routes the user to the page that fixes the gap; the
+ * lock clears automatically when useActiveSession / the workspace store
+ * see the new state.
  */
-function NoAgentLockBanner({ onPickAgent }: { onPickAgent: () => void }) {
+function ChatLockBanner({
+  noActiveSession,
+  noWorkspace,
+  onPickAgent,
+  onPickProject,
+}: {
+  noActiveSession: boolean
+  noWorkspace: boolean
+  onPickAgent: () => void
+  onPickProject: () => void
+}) {
+  // When both gaps exist, surface the agent step first — picking a project
+  // is meaningless without an agent to run against. After they claim an
+  // agent the banner re-renders with just the project ask.
+  const message = noActiveSession
+    ? noWorkspace
+      ? 'Pick an agent and a project to start chatting.'
+      : 'Chat is locked until you pick an agent.'
+    : 'Chat is locked until you select a project.'
+  const headline = noActiveSession
+    ? noWorkspace
+      ? 'No agent or project selected.'
+      : 'No agent selected.'
+    : 'No project selected.'
+  const action = noActiveSession
+    ? { label: 'Pick an agent →', onClick: onPickAgent }
+    : { label: 'Pick a project →', onClick: onPickProject }
+
   return (
     <div className="flex items-center justify-between gap-3 border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
       <span className="flex items-center gap-2">
         <span aria-hidden="true">🔒</span>
         <span>
-          <strong>No agent selected.</strong> Chat is locked until you pick
-          an agent.
+          <strong>{headline}</strong> {message}
         </span>
       </span>
       <button
         type="button"
-        onClick={onPickAgent}
+        onClick={action.onClick}
         className="flex-none rounded border border-amber-300 bg-white px-2 py-0.5 text-[11px] font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200 dark:hover:bg-amber-900/60"
       >
-        Pick an agent →
+        {action.label}
       </button>
     </div>
   )
